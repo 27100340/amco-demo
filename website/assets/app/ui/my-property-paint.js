@@ -3,14 +3,13 @@
  * saved paint, with "Back to review", "Send to Amco on WhatsApp" (rooms, shades and litres) and
  * "Export project" in the studio's panel header.
  */
-import { mountStudio } from './studio.js';
+import { mountStudio, DEFAULT_PRODUCT } from './studio.js';
 import { amco, data } from '../legacy.js';
 import { esc } from '../editor/dom.js';
 import { icon } from './my-property-icons.js';
 import { roomPolygons } from '../model/surfaces.js';
 import { polygonArea } from '../model/geometry.js';
 
-const DEFAULT_PRODUCT = 'aqueous-matt';
 /** Room uses that get a view tab, most important first; other rooms are reached from the wall list. */
 const TAB_USES = ['living', 'lounge', 'drawing', 'dining', 'kitchen', 'bedroom', 'study', 'reception', 'office', 'meeting', 'shop', 'cafe'];
 /** Most room tabs shown above the 3D view. */
@@ -127,7 +126,7 @@ export function createPaintStep(root, { onPaint, onSave, onBack, onExport }) {
   const host = document.createElement('div');
   root.append(host);
 
-  const productId = () => studio?.getProduct?.() || DEFAULT_PRODUCT;
+  const productId = () => (studio ? studio.getProduct() : DEFAULT_PRODUCT);
 
   function refreshLink() {
     frame = 0;
@@ -162,9 +161,6 @@ export function createPaintStep(root, { onPaint, onSave, onBack, onExport }) {
     else if (event.target.closest('[data-back]')) onBack();
     else if (event.target.closest('[data-export]')) onExport();
   });
-  host.addEventListener('change', (event) => {
-    if (event.target.matches('[data-product]')) scheduleLink();
-  });
 
   return {
     /**
@@ -188,6 +184,7 @@ export function createPaintStep(root, { onPaint, onSave, onBack, onExport }) {
             onPaint(state);
             scheduleLink();
           },
+          onProduct: scheduleLink,
           onSave(state, look) {
             onSave(state, look);
           }

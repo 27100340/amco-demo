@@ -10,7 +10,8 @@ import { amco, data } from '../legacy.js';
 const SCOPES = [['surface', 'This wall'], ['room', 'Whole room'], ['exterior', 'All exterior']];
 const LIGHTS = [['day', 'Daylight'], ['warm', 'Warm bulb'], ['cool', 'Tube light']];
 const FINISH_LABELS = [['matt', 'Matt'], ['silk', 'Silk'], ['gloss', 'Gloss']];
-const DEFAULT_PRODUCT = 'aqueous-matt';
+/** Product the paint estimate uses until the customer picks another one. */
+export const DEFAULT_PRODUCT = 'aqueous-matt';
 /** Space kept beside a view tab scrolled into sight (px). */
 const TAB_MARGIN = 24;
 const COATS = 2;
@@ -72,7 +73,8 @@ function hintFor(mode, touch) {
  *   onSave?: (state: object, look: object) => void, onView?: (view: object) => void,
  *   onProduct?: (productId: string) => void, productId?: string,
  *   headerSlot?: HTMLElement|string, quality?: 'auto'|'high'|'medium'|'low', interactive?: boolean, view?: string }} options
- *   `productId` preselects the paint used for the estimate; `onProduct` fires when the customer picks another one
+ *   `productId` preselects the paint used for the estimate (an unknown id falls back to `DEFAULT_PRODUCT`, or to the
+ *   first wall paint when the product data lacks it); `onProduct` fires when the customer picks another one
  * @returns {{ viewer: object|null, ready: Promise<void>, load: (building: object, paintState?: object, view?: string) => Promise<void>,
  *   getProduct: () => string, setProduct: (productId: string) => boolean, destroy: () => void }}
  *   `getProduct()` is the id of the product chosen for the estimate (an id from `AmcoData.products`)
@@ -83,7 +85,8 @@ export function mountStudio(root, options) {
   let scope = 'surface';
   const products = wallProducts();
   const known = (id) => products.some((p) => p.id === id);
-  let productId = known(options.productId) ? options.productId : DEFAULT_PRODUCT;
+  const fallbackProduct = known(DEFAULT_PRODUCT) || !products.length ? DEFAULT_PRODUCT : products[0].id;
+  let productId = known(options.productId) ? options.productId : fallbackProduct;
   let currentView = { mode: 'exterior', level: null, room: null };
   let frame = 0;
 
@@ -184,9 +187,11 @@ export function mountStudio(root, options) {
       <p>Your browser has 3D graphics switched off or does not support WebGL2. Try an up-to-date Chrome, Edge, Safari or Firefox, or browse the shade card instead.</p>
       <p><a class="btn btn-light" href="colours.html">Open the shade card</a></p>
     </div>`;
+    const failed = Promise.reject(error);
+    failed.catch(() => {});
     return {
       viewer: null,
-      ready: Promise.reject(error),
+      ready: failed,
       load: () => Promise.reject(error),
       getProduct: () => productId,
       setProduct: () => false,

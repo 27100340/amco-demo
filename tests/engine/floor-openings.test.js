@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { flatPolygon, extrudePolygons, levelVoids } from '../../website/assets/app/engine/compile/mesh-utils.js';
+import { validateBuilding } from '../../website/assets/app/model/schema.js';
+import { twoRoomHouse } from '../fixtures/two-room-house.js';
 
 /** Total area of a geometry's triangles facing up or down (plan area of a flat polygon). */
 function flatArea(geometry) {
@@ -44,4 +46,20 @@ test('levelVoids keeps only usable polygons', () => {
   assert.deepEqual(levelVoids({}), []);
   assert.deepEqual(levelVoids(null), []);
   assert.deepEqual(levelVoids({ voids: [WELL, [[0, 0], [1, 1]], 'x', [[0, 0], [1, NaN], [1, 1]]] }), [WELL]);
+});
+
+test('validateBuilding accepts level voids and only warns about malformed ones', () => {
+  const good = JSON.parse(JSON.stringify(twoRoomHouse));
+  good.levels[0].voids = [WELL];
+  assert.deepEqual(validateBuilding(good).warnings, []);
+  const bad = JSON.parse(JSON.stringify(twoRoomHouse));
+  bad.levels[0].voids = [WELL, [[0, 0], [1, 1]], 'x'];
+  const result = validateBuilding(bad);
+  assert.equal(result.ok, true);
+  assert.equal(result.warnings.filter((w) => w.includes('void')).length, 2);
+  const notList = JSON.parse(JSON.stringify(twoRoomHouse));
+  notList.levels[0].voids = { at: [1, 1] };
+  const listResult = validateBuilding(notList);
+  assert.equal(listResult.ok, true);
+  assert.ok(listResult.warnings.some((w) => w.includes('voids must be a list')));
 });

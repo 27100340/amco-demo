@@ -38,6 +38,10 @@ import { roomPolygons } from './surfaces.js';
  * @property {number} ceiling clear height; the default wall height
  * @property {number} slab slab thickness
  * @property {number} [parapet] parapet height, top level only
+ * @property {Point[][]} [voids] openings in this level's floor (stair wells, double-height
+ *   spaces), plan polygons of at least three points. The 3D view cuts each one from this level's
+ *   slab and room floors and from the ceilings of the level below, where the floor or ceiling
+ *   polygon wholly contains it.
  */
 
 /**
@@ -293,9 +297,28 @@ function checkWall(wall, levels, errors, warnings) {
 }
 
 /**
+ * Warns about floor openings that are not polygons (the 3D view ignores them).
+ * @param {Level} level
+ * @param {string[]} warnings
+ */
+function checkVoids(level, warnings) {
+  if (level.voids === undefined) return;
+  if (!Array.isArray(level.voids)) {
+    warnings.push(`level "${level.id}" voids must be a list of polygons; they are ignored`);
+    return;
+  }
+  level.voids.forEach((polygon, i) => {
+    if (!Array.isArray(polygon) || polygon.length < 3 || !polygon.every(isPoint)) {
+      warnings.push(`level "${level.id}" void ${i + 1} is not a polygon of at least three points; it is ignored`);
+    }
+  });
+}
+
+/**
  * Validates a building: references between items, degenerate walls, openings that overrun their
  * wall or overlap each other, rooms that cannot be given a shape, and reserved ids (rooms may not be
  * called 'exterior' or 'site'; walls may not be called 'room', 'group' or 'site', or contain ':').
+ * Malformed floor openings (`level.voids`) are only warned about, since the 3D view skips them.
  * @param {Building} building
  * @returns {{ ok: boolean, errors: string[], warnings: string[] }} `ok` is true when there are no errors
  */
@@ -320,6 +343,7 @@ export function validateBuilding(building) {
   const levels = indexIds(list('levels'), 'level', errors);
   for (const level of levels.values()) {
     if (!(Number.isFinite(level.ceiling) && level.ceiling > 0)) errors.push(`level "${level.id}" needs a ceiling height above zero`);
+    checkVoids(level, warnings);
   }
   indexIds(walls, 'wall', errors);
   indexIds(rooms, 'room', errors);
