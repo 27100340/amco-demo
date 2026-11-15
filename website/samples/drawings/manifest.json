@@ -1,0 +1,36 @@
+[
+  {
+    "file": "01-ground-floor-plan.dxf",
+    "slot": "plan",
+    "levelIndex": 0
+  },
+  {
+    "file": "02-first-floor-plan.dxf",
+    "slot": "plan",
+    "levelIndex": 1
+  },
+  {
+    "file": "03-section-A-A.dxf",
+    "slot": "section",
+    "section": "A"
+  },
+  {
+    "file": "04-section-B-B.dxf",
+    "slot": "section",
+    "section": "B"
+  },
+  {
+    "file": "05-working-drawing-A-A.dxf",
+    "slot": "working",
+    "section": "A"
+  },
+  {
+    "file": "06-working-drawing-B-B.dxf",
+    "slot": "working",
+    "section": "B"
+  },
+  {
+    "file": "07-site-layout.dxf",
+    "slot": "layout"
+  }
+]

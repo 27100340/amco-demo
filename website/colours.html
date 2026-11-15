@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shade card and photo colour match | Amco Paints</title>
+  <meta name="description" content="Browse all 63 Amco shades, named after the places, food and seasons of Pakistan. See how each one changes with light, what it goes with, and match a colour from your own photo.">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="stylesheet" href="assets/css/pages/colours.css">
+</head>
+<body data-page="colours">
+  <a class="skip-link" href="#colours-main">Skip to content</a>
+  <header data-site-header></header>
+
+  <main id="colours-main">
+    <section class="editorial-head" id="title-band" aria-labelledby="page-title">
+      <div class="wrap editorial-grid">
+        <div class="editorial-copy">
+          <p class="eyebrow">Colours</p>
+          <h1 id="page-title">The Amco shade card</h1>
+          <p class="urdu" lang="ur">پاکستان کے رنگ، آپ کی دیواروں کے لیے</p>
+          <p class="lede">All 63 shades are named after the places, food and seasons of Pakistan, from Karakoram snow to the first Sindhri mangoes of June.</p>
+        </div>
+        <figure class="editorial-media title-swatch">
+          <figcaption class="title-swatch-label" id="title-tab">Pick a shade below</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" id="card" aria-labelledby="card-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="card-heading">Find your shade</h2>
+            <p class="lede">Search by name or code, or browse one colour family at a time. Pick any shade to read where it comes from, how it handles light and what goes with it.</p>
+          </div>
+          <p class="urdu" lang="ur">اپنا رنگ تلاش کریں</p>
+        </div>
+
+        <div class="card-layout" id="card-layout">
+          <aside class="detail panel" id="detail" aria-label="Selected shade">
+            <div class="detail-swatch" id="detail-swatch"></div>
+
+            <div class="detail-head">
+              <h3 id="detail-name" tabindex="-1">Pick a shade</h3>
+              <p class="detail-meta small"><span class="num" id="detail-code"></span><span class="tag" id="detail-family"></span></p>
+              <p id="detail-story"></p>
+            </div>
+
+            <div class="detail-block">
+              <h4>How much light it reflects</h4>
+              <p><strong class="num" id="detail-lrv"></strong> <span id="detail-lrv-advice"></span></p>
+              <div class="lrv-meter" aria-hidden="true"><span id="detail-lrv-fill"></span></div>
+              <p class="small muted">LRV means light reflectance value. 0 is black and 100 is pure white.</p>
+            </div>
+
+            <div class="detail-block">
+              <h4>How it changes with light</h4>
+              <p class="small muted">The same paint reads warmer under a bulb and cooler under a tube light.</p>
+              <ul class="list-plain lights" id="detail-lights"></ul>
+            </div>
+
+            <div class="detail-block">
+              <h4>Goes well with</h4>
+              <p class="small muted">Try these on the trim, a second wall or the ceiling. Pick one to open it.</p>
+              <div class="partners" id="detail-partners"></div>
+            </div>
+
+            <div class="detail-actions">
+              <button class="btn" type="button" id="detail-save">Save to my project</button>
+              <a class="btn btn-ghost" href="visualiser.html">See it in the 3D visualiser</a>
+              <a class="btn btn-wa" id="detail-whatsapp" target="_blank" rel="noopener" href="#">Ask the price on WhatsApp</a>
+            </div>
+          </aside>
+
+          <div class="card-main">
+            <div class="card-tools">
+              <div class="field">
+                <label for="shade-search">Search by name or code</label>
+                <input class="input" type="search" id="shade-search" placeholder="Try Hunza, kinnow or AM-5001" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="field">
+                <span class="label" id="sort-label">Sort</span>
+                <div class="seg" id="shade-sort" role="group" aria-labelledby="sort-label">
+                  <button type="button" data-sort="family" aria-pressed="true">By family</button>
+                  <button type="button" data-sort="light" aria-pressed="false">Light to dark</button>
+                </div>
+              </div>
+              <div class="field field-family">
+                <span class="label" id="family-label">Colour family</span>
+                <div class="family-filter" id="family-filter" role="group" aria-labelledby="family-label"></div>
+              </div>
+            </div>
+
+            <p class="card-count num" id="shade-count" role="status"></p>
+
+            <div id="shade-grid"></div>
+
+            <div class="panel card-empty" id="shade-empty" hidden>
+              <h3>No shade matches that search</h3>
+              <p id="shade-empty-text"></p>
+              <button class="btn btn-ghost" type="button" id="shade-empty-reset">Clear the search and show all shades</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band band-wash" id="match" aria-labelledby="match-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="match-heading">Match a colour from a photo</h2>
+            <p class="lede">Seen a colour you love on a cushion, a suit or a neighbour's gate? Take a photo and we will find the closest Amco shades.</p>
+          </div>
+          <p class="urdu" lang="ur">تصویر سے رنگ ملائیں</p>
+        </div>
+
+        <div class="match-layout">
+          <div class="panel dropzone" id="dropzone">
+            <div class="stack" id="photo-empty">
+              <h3>No photo yet</h3>
+              <p>Choose a photo from your phone or computer. Fabric, tiles, a painted wall or a flower all work, and photos taken in daylight match best. On a computer you can also drag a photo into this box.</p>
+            </div>
+
+            <div class="photo-view" id="photo-view" hidden>
+              <button class="photo-stage" type="button" id="photo-stage" aria-label="Your photo. Pick a spot to match its colour." aria-describedby="photo-help">
+                <canvas id="photo-canvas" width="2" height="2"></canvas>
+                <span class="photo-marker" id="photo-marker" hidden></span>
+              </button>
+              <p class="small muted" id="photo-help">Tap or click any spot on the photo to pick its colour. With a keyboard, move to the photo and use the arrow keys.</p>
+            </div>
+
+            <div class="file-pick">
+              <input class="visually-hidden file-input" type="file" id="photo-input" accept="image/*">
+              <label class="btn" for="photo-input" id="photo-label">Choose a photo</label>
+            </div>
+
+            <p class="photo-error" id="photo-error" role="alert" hidden></p>
+
+            <p class="note">Your photo stays on this device. It is read here in your browser and is never uploaded to Amco or to anyone else.</p>
+          </div>
+
+          <div class="match-side">
+            <div class="panel stack" id="match-empty">
+              <h3>What you will get</h3>
+              <ul class="list-check">
+                <li>The three closest Amco shades to any spot you pick on the photo.</li>
+                <li>The main colours in the whole photo, each beside its nearest Amco shade.</li>
+                <li>One tap to save a match to your project or open it in the shade card.</li>
+              </ul>
+            </div>
+
+            <div class="match-results" id="match-results" hidden>
+              <p class="small muted">In each pair, the left half is the colour from your photo and the right half is the Amco shade.</p>
+
+              <div class="leaf picked" id="picked">
+                <div class="leaf-body stack">
+                  <h3>The colour you picked</h3>
+                  <p class="muted" id="picked-prompt">Nothing picked yet. Tap any spot on the photo.</p>
+                  <p class="picked-value" id="picked-value" hidden><span class="dot"></span><span class="num" id="picked-hex"></span></p>
+                  <ul class="list-plain match-list" id="picked-matches"></ul>
+                  <p class="visually-hidden" id="picked-status" role="status"></p>
+                </div>
+              </div>
+
+              <div class="panel stack">
+                <h3>Main colours in your photo</h3>
+                <ul class="list-plain match-list" id="dominant-matches"></ul>
+              </div>
+            </div>
+
+            <p class="small muted">Cameras and screens shift colour a little, so treat a match as a starting point and check the printed shade card before you buy.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer data-site-footer></footer>
+
+  <script src="assets/js/shades.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script src="assets/js/colours.js"></script>
+</body>
+</html>

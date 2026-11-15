@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Drawing importer (dev harness)</title>
+  <link rel="stylesheet" href="../../website/assets/fonts/fonts.css">
+  <link rel="stylesheet" href="../../website/assets/css/tokens.css">
+  <link rel="stylesheet" href="../../website/assets/css/base.css">
+  <style>
+    body { background: var(--color-canvas); padding: 1rem; }
+    h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+    .dev-note { color: var(--color-ink-soft); margin: 0 0 1rem; font-size: var(--text-sm); }
+    .dev-status { font-variant-numeric: tabular-nums; }
+    .dev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem; }
+    .dev-card { background: var(--color-paper); border: 1px solid var(--color-line); border-radius: 8px; padding: 0.75rem; font-size: var(--text-xs); }
+    .dev-card img { display: block; width: 100%; height: 150px; object-fit: contain; background: var(--color-canvas); border-radius: 4px; margin-bottom: 0.5rem; }
+    .dev-card h2 { font-size: var(--text-sm); margin: 0 0 0.25rem; word-break: break-all; }
+    .dev-card p { margin: 0.15rem 0; }
+    .dev-bad { color: #a3361f; }
+    .dev-warn { color: #8a5a00; }
+    pre { background: var(--color-paper); border: 1px solid var(--color-line); border-radius: 8px; padding: 0.75rem; font-size: var(--text-xs); white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Drawing importer</h1>
+  <p class="dev-note">Feeds every file in <code>website/samples/drawings/</code>, plus made-up DWG, binary DXF, PNG, oversized and unsupported files, through <code>readDrawing</code>, then <code>checkPackage</code>, <code>assemble</code>, <code>reextract</code> and a full-size <code>rasterise</code>.</p>
+  <p class="dev-status" id="status" aria-live="polite">Reading…</p>
+  <div class="dev-grid" id="cards"></div>
+  <h2>Package</h2>
+  <pre id="package"></pre>
+  <script type="module">
+    import { readDrawing, checkPackage, assemble, rasterise, reextract } from '../../website/assets/app/importers/index.js';
+
+    const SAMPLES = '../../website/samples/drawings/';
+    const status = document.getElementById('status');
+    const cards = document.getElementById('cards');
+
+    async function sampleFiles() {
+      const manifest = await (await fetch(`${SAMPLES}manifest.json`)).json();
+      const names = manifest.flatMap((m) => [m.file, m.file.replace(/\.dxf$/, '.pdf')]);
+      return Promise.all(names.map(async (name) => {
+        const blob = await (await fetch(SAMPLES + name)).blob();
+        return new File([blob], name, { type: name.endsWith('.pdf') ? 'application/pdf' : '' });
+      }));
+    }
+
+    async function madeUpFiles() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 800;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, 1200, 800);
+      ctx.lineWidth = 12;
+      ctx.strokeRect(100, 100, 1000, 600);
+      ctx.strokeRect(100, 100, 500, 600);
+      const png = await new Promise((done) => canvas.toBlob(done, 'image/png'));
+      return [
+        new File([png], 'scanned-plan.png', { type: 'image/png' }),
+        new File([new TextEncoder().encode('AC1032\u0000\u0000\u0000binary')], 'house.dwg'),
+        new File([new TextEncoder().encode('AutoCAD Binary DXF\r\n\u001a\u0000')], 'binary.dxf'),
+        new File([new Uint8Array(26 * 1024 * 1024)], 'huge-scan.pdf', { type: 'application/pdf' }),
+        new File([new TextEncoder().encode('%PDF-1.7 broken')], 'broken.pdf', { type: 'application/pdf' }),
+        new File([new TextEncoder().encode('notes')], 'notes.txt', { type: 'text/plain' })
+      ];
+    }
+
+    function card(d) {
+      const el = document.createElement('article');
+      el.className = 'dev-card';
+      if (d.thumbnail) {
+        const img = document.createElement('img');
+        img.alt = `Thumbnail of ${d.name}`;
+        img.src = URL.createObjectURL(d.thumbnail);
+        el.append(img);
+      }
+      const line = (text, cls) => {
+        const p = document.createElement('p');
+        p.textContent = text;
+        if (cls) p.className = cls;
+        el.append(p);
+      };
+      const h = document.createElement('h2');
+      h.textContent = d.name;
+      el.append(h);
+      line(`${d.format} · slot ${d.slot} · level ${d.levelIndex} · section ${d.section} · marks [${d.sectionMarks.join(', ')}]`);
+      line(d.summary);
+      if (d.error) line(d.error, 'dev-bad');
+      for (const w of d.warnings) line(w, 'dev-warn');
+      return el;
+    }
+
+    async function run() {
+      const files = [...await sampleFiles(), ...await madeUpFiles()];
+      const started = performance.now();
+      const drawings = [];
+      for (const file of files) drawings.push(await readDrawing(file));
+      const readMs = Math.round(performance.now() - started);
+      cards.append(...drawings.map(card));
+
+      const dxf = drawings.filter((d) => d.format === 'dxf' && d.readable);
+      const pkg = checkPackage(dxf, { floors: 2 });
+      const { building, schedule, report } = assemble(dxf, { name: 'Sample House', kind: 'house', floors: 2 });
+      const ground = dxf.find((d) => d.levelIndex === 0);
+      const inInches = reextract(ground, { unit: 'in' });
+      const backToMm = reextract(inInches, { unit: 'mm' });
+      const pdf = files.find((f) => f.name === '01-ground-floor-plan.pdf');
+      const t0 = performance.now();
+      const raster = await rasterise(pdf);
+      const rasterMs = Math.round(performance.now() - t0);
+      const fullRaster = { width: raster.width, height: raster.height, pages: raster.pages, ms: rasterMs, isBitmap: raster.bitmap instanceof ImageBitmap };
+      raster.bitmap.close();
+
+      const result = {
+        readMs,
+        rows: drawings.map((d) => ({
+          name: d.name, format: d.format, slot: d.slot, levelIndex: d.levelIndex, section: d.section, sectionMarks: d.sectionMarks,
+          readable: d.readable, summary: d.summary, error: d.error ?? null, warnings: d.warnings, pages: d.pages ?? null,
+          units: d.units ?? null, thumbnail: d.thumbnail ? { type: d.thumbnail.type, bytes: d.thumbnail.size } : null
+        })),
+        package: { complete: pkg.complete, required: pkg.required, items: pkg.items.map((i) => ({ key: i.key, satisfied: i.satisfied, missing: i.missing })) },
+        assembled: { counts: report.counts, warnings: report.warnings, defaultsUsed: report.defaultsUsed, scheduleTags: Object.keys(schedule), walls: building.walls.length },
+        reextract: { inches: inInches.summary, inchesUnits: inInches.units, backToMm: backToMm.summary, sameIdAndThumbnail: inInches.id === ground.id && inInches.thumbnail === ground.thumbnail },
+        fullRaster
+      };
+      document.getElementById('package').textContent = JSON.stringify({ package: result.package, assembled: result.assembled, reextract: result.reextract, fullRaster }, null, 2);
+      status.textContent = `Read ${drawings.length} files in ${readMs} ms. Package complete: ${pkg.complete}.`;
+      window.__importer = result;
+      document.body.dataset.done = 'yes';
+    }
+
+    async function showSheet(name) {
+      document.body.replaceChildren();
+      const blob = await (await fetch(SAMPLES + name)).blob();
+      const { bitmap, width, height } = await rasterise(new File([blob], name, { type: 'application/pdf' }), { maxSize: 2400 });
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.style.width = '100%';
+      canvas.getContext('2d').drawImage(bitmap, 0, 0);
+      bitmap.close();
+      document.body.append(canvas);
+      document.body.dataset.done = 'yes';
+    }
+
+    const sheet = new URLSearchParams(window.location.search).get('sheet');
+    (sheet ? showSheet(sheet) : run()).catch((error) => {
+      console.error(error);
+      status.textContent = `Harness failed: ${error.message}`;
+      window.__importer = { failed: error.message, stack: error.stack };
+      document.body.dataset.done = 'error';
+    });
+  </script>
+</body>
+</html>

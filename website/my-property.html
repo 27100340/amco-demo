@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Upload your plans | Amco Paints</title>
+  <meta name="description" content="Upload your floor plans, sections, working drawings and site layout. We rebuild your property in 3D in your browser, with no AI and nothing sent to a server, and you paint it wall by wall in Amco shades.">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="stylesheet" href="assets/css/pages/editor.css">
+  <link rel="stylesheet" href="assets/css/pages/studio.css">
+  <link rel="stylesheet" href="assets/css/pages/my-property.css">
+  <script type="importmap">
+  { "imports": {
+    "three": "./assets/vendor/three/three.module.js",
+    "three/addons/": "./assets/vendor/three/addons/"
+  } }
+  </script>
+</head>
+<body data-page="my-property">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header data-site-header></header>
+
+  <main id="main" class="mp">
+    <section class="editorial-head mp-head" aria-labelledby="page-title">
+      <div class="wrap mp-head-grid">
+        <div class="editorial-copy">
+          <p class="eyebrow">Upload your plans</p>
+          <h1 id="page-title">Your drawings, built in 3D</h1>
+          <p class="lede">Add your floor plans, sections, working drawings and site layout. We read them in your browser, rebuild the property in 3D, and you paint it wall by wall.</p>
+        </div>
+        <ul class="mp-promises list-plain" aria-label="How it works">
+          <li><strong>Stays on this device.</strong> Your drawings are read and saved in this browser. Nothing is uploaded to a server.</li>
+          <li><strong>Read, not guessed.</strong> DXF drawings are measured line by line, with no AI. PDFs and photos are traced by you over the drawing.</li>
+          <li><strong>Every wall paintable.</strong> The same 3D studio as our show homes, with litres worked out for each room.</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="wrap mp-banners" data-banners aria-live="polite"></div>
+
+    <nav class="wrap mp-steps" aria-label="Steps">
+      <ol data-steps>
+        <li><button type="button" data-go="property"><span class="mp-step-num" aria-hidden="true">1</span><span class="mp-step-text"><span class="mp-step-label">Your property</span><span class="mp-step-note" data-step-note="property"></span></span></button></li>
+        <li><button type="button" data-go="drawings"><span class="mp-step-num" aria-hidden="true">2</span><span class="mp-step-text"><span class="mp-step-label">Drawings</span><span class="mp-step-note" data-step-note="drawings"></span></span></button></li>
+        <li><button type="button" data-go="review"><span class="mp-step-num" aria-hidden="true">3</span><span class="mp-step-text"><span class="mp-step-label">Review</span><span class="mp-step-note" data-step-note="review"></span></span></button></li>
+        <li><button type="button" data-go="paint"><span class="mp-step-num" aria-hidden="true">4</span><span class="mp-step-text"><span class="mp-step-label">Paint</span><span class="mp-step-note" data-step-note="paint"></span></span></button></li>
+      </ol>
+    </nav>
+
+    <div class="wrap mp-notices" data-notices role="status"></div>
+
+    <!-- Step 1: the property -->
+    <section class="wrap mp-step" data-step="property" tabindex="-1" aria-labelledby="step-property-title">
+      <h2 id="step-property-title" class="visually-hidden">Your property</h2>
+      <div class="mp-start">
+        <form class="mp-panel mp-details" data-details-form novalidate>
+          <h3 class="mp-panel-title" data-details-title>Start a new property</h3>
+          <p class="mp-panel-text" data-details-text>Tell us what you are building or painting. You can change these later.</p>
+          <div class="field">
+            <label for="mp-name">Property name</label>
+            <input class="input" id="mp-name" name="name" type="text" maxlength="80" autocomplete="off" placeholder="For example, House 24, Street 5, DHA Phase 6">
+          </div>
+          <div class="field">
+            <span class="label" id="mp-kind-label">Type</span>
+            <div class="seg" role="group" aria-labelledby="mp-kind-label" data-choice="kind">
+              <button type="button" data-value="house" aria-pressed="true">House</button>
+              <button type="button" data-value="office" aria-pressed="false">Office</button>
+              <button type="button" data-value="shop" aria-pressed="false">Shop</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label" id="mp-floors-label">Floors</span>
+            <div class="seg" role="group" aria-labelledby="mp-floors-label" data-choice="floors">
+              <button type="button" data-value="1" aria-pressed="true">1</button>
+              <button type="button" data-value="2" aria-pressed="false">2</button>
+              <button type="button" data-value="3" aria-pressed="false">3</button>
+              <button type="button" data-value="4" aria-pressed="false">4</button>
+            </div>
+            <p class="hint">Count the ground floor as 1. We need one floor plan for each floor.</p>
+          </div>
+          <div class="row mp-details-actions">
+            <button class="btn" type="submit" data-details-submit>Continue to drawings</button>
+            <button class="btn btn-link" type="button" data-close-project hidden>Start a different property</button>
+          </div>
+        </form>
+
+        <aside class="mp-panel mp-sample" aria-labelledby="mp-sample-title">
+          <p class="eyebrow">No drawings to hand?</p>
+          <h3 class="mp-panel-title" id="mp-sample-title">Try our sample house</h3>
+          <p class="mp-panel-text">A 10 marla, double-storey house in DHA Lahore, drawn the way architects draw: two floor plans, two sections, two working drawings and a site layout, all as DXF.</p>
+          <div class="mp-sample-actions">
+            <button class="btn" type="button" data-load-sample>Load the sample project</button>
+            <a class="btn btn-ghost" href="samples/amco-sample-drawings.zip" download data-sample-zip>Download sample drawings (.zip)</a>
+          </div>
+          <p class="mp-panel-note">The zip also has the same sheets as PDFs, so you can try tracing a plan by hand.</p>
+        </aside>
+      </div>
+
+      <div class="mp-projects">
+        <div class="mp-section-head">
+          <h3 class="mp-section-title">Your projects</h3>
+          <button class="btn btn-ghost btn-sm" type="button" data-pick="import">Import project (.amco.json)</button>
+          <input type="file" accept=".json,application/json" data-import hidden>
+        </div>
+        <div data-project-list></div>
+      </div>
+    </section>
+
+    <!-- Step 2: the drawings -->
+    <section class="wrap mp-step" data-step="drawings" tabindex="-1" aria-labelledby="step-drawings-title" hidden>
+      <div class="mp-step-head">
+        <div>
+          <p class="eyebrow" data-project-meta></p>
+          <h2 id="step-drawings-title" class="mp-step-title">Add your drawings</h2>
+        </div>
+        <button class="btn btn-ghost btn-sm" type="button" data-go="property">Edit property details</button>
+      </div>
+      <div class="mp-drawings">
+        <div class="mp-drawings-main">
+          <div class="mp-drop" data-drop-panel>
+            <p class="mp-drop-title"><span class="mp-drop-fine">Drop your drawings here, or anywhere on this page</span><span class="mp-drop-coarse">Add your drawings</span></p>
+            <p class="mp-drop-text">DXF, PDF, PNG, JPG or WebP, up to 25 MB each. DXF drawings go into the right place by themselves.</p>
+            <button class="btn" type="button" data-pick="any">Choose files</button>
+            <input type="file" multiple accept=".dxf,.dwg,.pdf,.png,.jpg,.jpeg,.webp" data-add-any hidden>
+            <p class="mp-busy" data-busy aria-live="polite"></p>
+          </div>
+          <div data-slots></div>
+
+          <details class="mp-guide">
+            <summary>Drawing guide for architects</summary>
+            <div class="mp-guide-body">
+              <div class="mp-guide-part">
+                <h4>What we need</h4>
+                <p>One floor plan for each floor, a section drawing for every section marked on the plans, a working drawing for each section, and the site layout. PDFs, scans and photos are fine too: you trace the walls over them in the review step.</p>
+              </div>
+              <div class="mp-guide-part">
+                <h4>Save as DXF</h4>
+                <p>We can't read DWG files in the browser. In AutoCAD use File, Save As, and choose a DXF type (AutoCAD R12 or 2000 and later, not binary). Keep everything in model space, not only on a layout sheet.</p>
+              </div>
+              <div class="mp-guide-part">
+                <h4>Units</h4>
+                <p>Draw in millimetres and set the drawing units ($INSUNITS) to millimetres if you can. If the file doesn't say, we work out the units from the wall thickness, because 9″ and 4½″ walls are standard. You can change the units in the review step.</p>
+              </div>
+              <div class="mp-guide-part">
+                <h4>Titles and tags</h4>
+                <p>Write the title on each sheet: GROUND FLOOR PLAN, FIRST FLOOR PLAN, SECTION A-A, WORKING DRAWING SECTION A-A, SITE LAYOUT (or SITE PLAN). Tag every door and window (D1, W1, V1) and list them in the schedule on the working drawings, for example "D1 DOOR 1050 x 2100". Mark levels on sections as "FFL +3.350", "CEILING +3.050" or "PARAPET +7.750".</p>
+              </div>
+              <div class="mp-guide-part mp-guide-wide">
+                <h4>Layers</h4>
+                <div class="table-scroll">
+                  <table class="table mp-guide-table">
+                    <thead><tr><th scope="col">What</th><th scope="col">Layer names we read</th></tr></thead>
+                    <tbody>
+                      <tr><th scope="row">Walls</th><td>A-WALL, WALL. Draw both faces of every wall as parallel lines. If your walls are on another layer, such as 0, we use the layer with the most wall-like pairs of lines.</td></tr>
+                      <tr><th scope="row">Doors</th><td>A-DOOR, DOOR</td></tr>
+                      <tr><th scope="row">Windows</th><td>A-GLAZ, A-WIND, WINDOW</td></tr>
+                      <tr><th scope="row">Room names</th><td>A-AREA-IDEN, A-ANNO-ROOM, ROOM</td></tr>
+                      <tr><th scope="row">Section marks</th><td>A-ANNO-SECT, A-SECT, SECTION</td></tr>
+                      <tr><th scope="row">Levels</th><td>A-ANNO-LEVL, LEVEL</td></tr>
+                      <tr><th scope="row">Site</th><td>C-PROP or PLOT (plot boundary), A-SITE-WALL (boundary wall), GATE, L-PLNT (lawn), A-SITE-PAVE (paving), C-ROAD (road), A-SITE-BLDG (building footprint)</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <aside class="mp-gate" aria-labelledby="mp-gate-title">
+          <div class="mp-panel mp-gate-panel">
+            <h3 class="mp-panel-title" id="mp-gate-title">Before we can build</h3>
+            <div data-requirements></div>
+            <div class="mp-gate-actions">
+              <button class="btn" type="button" data-build disabled>Build my 3D model</button>
+              <button class="btn btn-ghost" type="button" data-open-model hidden>Open my model</button>
+            </div>
+            <p class="mp-gate-note" data-gate-note aria-live="polite"></p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Step 3: review -->
+    <section class="wrap mp-step" data-step="review" tabindex="-1" aria-labelledby="step-review-title" hidden>
+      <div class="mp-step-head">
+        <div>
+          <p class="eyebrow" data-project-meta></p>
+          <h2 id="step-review-title" class="mp-step-title" data-review-title>Check your model</h2>
+        </div>
+        <div class="row">
+          <button class="btn btn-ghost btn-sm" type="button" data-go="drawings">Back to drawings</button>
+          <button class="btn btn-sm" type="button" data-go="paint">Paint in 3D</button>
+        </div>
+      </div>
+      <div data-review></div>
+    </section>
+
+    <!-- Step 4: paint -->
+    <section class="mp-step mp-paint" data-step="paint" tabindex="-1" aria-label="Paint in 3D" hidden>
+      <div data-paint></div>
+    </section>
+  </main>
+
+  <div class="mp-drop-overlay" data-drop-overlay hidden aria-hidden="true">
+    <p>Drop to add your drawings</p>
+  </div>
+
+  <dialog class="mp-dialog" data-dialog aria-labelledby="mp-dialog-title">
+    <div class="mp-dialog-head">
+      <h2 class="mp-dialog-title" id="mp-dialog-title" data-dialog-title></h2>
+      <button class="icon-btn" type="button" data-dialog-close aria-label="Close">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="mp-dialog-body" data-dialog-body></div>
+  </dialog>
+
+  <footer data-site-footer></footer>
+
+  <script src="assets/js/shades.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script type="module" src="assets/app/ui/my-property-page.js"></script>
+</body>
+</html>

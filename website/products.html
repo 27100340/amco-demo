@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Products and prices | Amco Paints</title>
+  <meta name="description" content="Every Amco paint with its price per litre and per tin, how far a litre goes and how washable it is. Compare products side by side before you visit a dealer.">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="stylesheet" href="assets/css/pages/products.css">
+</head>
+<body data-page="products">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header data-site-header></header>
+
+  <main id="main">
+    <section class="editorial-head" aria-labelledby="page-title">
+      <div class="wrap editorial-grid">
+        <div class="editorial-copy">
+          <p class="eyebrow">Products</p>
+          <h1 id="page-title">Every Amco product, with its price</h1>
+          <p class="urdu" lang="ur">ہر پراڈکٹ، قیمت کے ساتھ</p>
+          <p class="lede">Most paint companies in Pakistan keep their prices off their websites. We show ours, per litre and per tin, so you can work out your budget before you walk into a dealer's shop.</p>
+        </div>
+        <figure class="editorial-media tin-head">
+          <img src="assets/img/products/interior-emulsion.webp" width="800" height="800" decoding="async" alt="A four-litre tin of Cover Up interior emulsion">
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="list-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="list-heading">The price list</h2>
+            <p class="lede">Each product shows what one litre costs, what each tin costs, how far it goes and how well it washes.</p>
+          </div>
+          <p class="urdu" lang="ur">قیمتوں کی فہرست</p>
+        </div>
+
+        <div class="price-tools">
+          <div class="field">
+            <span class="label" id="filter-label">What are you painting?</span>
+            <div class="seg seg-wrap" id="category-filter" role="group" aria-labelledby="filter-label"></div>
+          </div>
+          <p class="note">These are indicative retail prices for this MVP. Your Amco dealer confirms the final price before you pay.</p>
+        </div>
+
+        <p class="small muted" id="product-count" role="status"></p>
+        <div class="product-list" id="product-list"></div>
+        <noscript><p class="note">The price list needs JavaScript. Switch it on in your browser, or WhatsApp us for the current prices.</p></noscript>
+
+        <div class="compare-bar" id="compare-bar" hidden>
+          <p id="compare-bar-text"></p>
+          <div class="row">
+            <a class="btn btn-light btn-sm" id="compare-bar-link" href="#compare">See the comparison</a>
+            <button class="btn btn-outline-light btn-sm" type="button" id="compare-clear">Clear the comparison</button>
+          </div>
+        </div>
+        <p class="visually-hidden" id="compare-live" role="status"></p>
+      </div>
+    </section>
+
+    <section class="band band-wash" id="compare" aria-labelledby="compare-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="compare-heading" tabindex="-1">Compare side by side</h2>
+            <p class="lede">Press "Compare this product" on two or three products in the price list and they line up here.</p>
+          </div>
+          <p class="urdu" lang="ur">موازنہ کریں</p>
+        </div>
+        <p id="compare-empty"></p>
+        <div class="panel" id="compare-panel" hidden>
+          <div class="table-scroll">
+            <table class="table compare-table" id="compare-table"></table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="grades" aria-labelledby="grades-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="grades-heading">Good, better, best: where to spend and where to save</h2>
+            <p class="lede">You do not need our most expensive paint on every wall. A sensible house uses two or three grades. This is how we would split the interior.</p>
+          </div>
+          <p class="urdu" lang="ur">اچھا، بہتر، بہترین</p>
+        </div>
+
+        <div class="grid">
+          <article class="leaf" data-guide-product="smart-emulsion">
+            <div class="leaf-body stack">
+              <div class="stack stack-sm">
+                <h3>Smart Super Emulsion</h3>
+                <p class="row"><span class="tag">Economy grade</span><span class="small muted" data-guide-price></span></p>
+              </div>
+              <p><strong>Save here.</strong> Use it on ceilings and store rooms. Nobody touches a ceiling, so washable paint up there is money wasted.</p>
+              <p class="muted">Keep it out of kitchens, bathrooms and anywhere hands reach. It marks easily and it cannot be washed.</p>
+            </div>
+          </article>
+
+          <article class="leaf" data-guide-product="special-emulsion">
+            <div class="leaf-body stack">
+              <div class="stack stack-sm">
+                <h3>Cover Up Special Emulsion</h3>
+                <p class="row"><span class="tag">Good grade</span><span class="small muted" data-guide-price></span></p>
+              </div>
+              <p><strong>The sensible default.</strong> Right for a whole-house repaint, guest rooms and rented portions. It wipes with a damp cloth.</p>
+              <p class="muted">It will not survive hard scrubbing. If the budget is tight, this on the walls and Smart Super Emulsion on the ceilings makes a decent house.</p>
+            </div>
+          </article>
+
+          <article class="leaf" data-guide-product="plastic-emulsion">
+            <div class="leaf-body stack">
+              <div class="stack stack-sm">
+                <h3>Cover Up Plastic Emulsion</h3>
+                <p class="row"><span class="tag">Better grade</span><span class="small muted" data-guide-price></span></p>
+              </div>
+              <p><strong>Worth it where walls get rubbed.</strong> Kitchens, corridors and stairs take a scrub every week. The soft sheen also lifts small, dark rooms.</p>
+              <p class="muted">Sheen shows uneven plaster more than matt does, so get the putty right first.</p>
+            </div>
+          </article>
+
+          <article class="leaf" data-guide-product="aqueous-matt">
+            <div class="leaf-body stack">
+              <div class="stack stack-sm">
+                <h3>Cover Up Aqueous Matt</h3>
+                <p class="row"><span class="tag">Best grade</span><span class="small muted" data-guide-price></span></p>
+              </div>
+              <p><strong>Spend here.</strong> Use it where children touch the walls and where guests sit: the drawing room, the lounge and the children's bedrooms. Tea, crayon and fingerprints wipe off.</p>
+              <p class="muted">It is wasted on ceilings and store rooms.</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="panel stack grade-panel">
+          <h3>Three places not to save</h3>
+          <ul class="list-check">
+            <li><strong>Prime every wall first.</strong> One coat of Smart Series Wall Primer costs far less than repainting after salt (shora) burns through a new topcoat.</li>
+            <li><strong>Use the paint at the strength on the tin.</strong> Thinning it to stretch a drum gives you three watery coats that wear out before two proper ones.</li>
+            <li><strong>Keep economy emulsion out of kitchens and bathrooms.</strong> Steam and splashes ruin it within months, and it cannot be washed.</li>
+          </ul>
+          <p><a class="btn" href="tools.html#calculator">Calculate how much I need</a></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer data-site-footer></footer>
+
+  <script src="assets/js/shades.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script src="assets/js/products.js"></script>
+</body>
+</html>

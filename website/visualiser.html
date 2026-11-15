@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D visualiser | Amco Paints</title>
+  <meta name="description" content="Walk through a real-looking home, office or shop in 3D, paint any wall in an Amco shade, and see it in daylight, under a warm bulb and under a tube light before you buy.">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="stylesheet" href="assets/css/pages/studio.css">
+  <link rel="stylesheet" href="assets/css/pages/visualiser.css">
+  <script type="importmap">
+  { "imports": {
+    "three": "./assets/vendor/three/three.module.js",
+    "three/addons/": "./assets/vendor/three/addons/"
+  } }
+  </script>
+</head>
+<body data-page="visualiser">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header data-site-header></header>
+
+  <main id="main">
+    <section class="vis-intro wrap" aria-labelledby="vis-title">
+      <p class="eyebrow">3D visualiser</p>
+      <div class="vis-intro-grid">
+        <h1 id="vis-title">Paint a real room before you open a tin</h1>
+        <p class="lede">Choose a home, an office or a shop. Walk through it, pick any wall and try Amco shades in daylight, under a warm bulb and under a tube light.</p>
+      </div>
+    </section>
+
+    <section class="vis-gallery wrap" aria-labelledby="vis-gallery-title">
+      <div class="vis-gallery-head">
+        <h2 id="vis-gallery-title" class="vis-gallery-title">Choose a property</h2>
+        <div class="vis-filters" role="group" aria-label="Filter properties" data-filters>
+          <button type="button" data-filter="all" aria-pressed="true">All</button>
+          <button type="button" data-filter="homes" aria-pressed="false">Homes</button>
+          <button type="button" data-filter="office" aria-pressed="false">Office</button>
+          <button type="button" data-filter="retail" aria-pressed="false">Retail</button>
+        </div>
+      </div>
+      <div class="vis-cards" data-gallery></div>
+      <p class="vis-empty" data-gallery-empty hidden>The showcase properties are being prepared. Please check back soon.</p>
+    </section>
+
+    <section class="vis-studio" id="studio" aria-label="3D studio">
+      <div data-studio></div>
+    </section>
+
+    <section class="band band-ink vis-cta" aria-labelledby="vis-cta-title">
+      <div class="wrap vis-cta-grid">
+        <div>
+          <p class="eyebrow">Your own property</p>
+          <h2 id="vis-cta-title">Have your own drawings?</h2>
+        </div>
+        <div class="vis-cta-copy">
+          <p class="lede">Upload your floor plans, sections, working drawings and site layout. We build your property in 3D in your browser, and you paint it wall by wall.</p>
+          <p><a class="btn btn-light" href="my-property.html">Upload your plans</a></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer data-site-footer></footer>
+
+  <script src="assets/js/shades.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script type="module" src="assets/app/ui/visualiser-page.js"></script>
+</body>
+</html>

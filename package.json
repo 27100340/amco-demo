@@ -1,0 +1,19 @@
+{
+  "name": "amco-paints",
+  "private": true,
+  "type": "module",
+  "description": "Amco Paints website: static site, 3D paint visualiser and drawing importer. No build step; node is only used for tests and tools.",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
+    "vendor": "node tools/vendor.mjs",
+    "samples": "node tools/sample-drawings/generate.mjs",
+    "serve": "node tools/serve.mjs 8765"
+  },
+  "devDependencies": {
+    "@fontsource-variable/instrument-sans": "^5.3.0",
+    "@fontsource/instrument-serif": "^5.3.0",
+    "esbuild": "^0.28.2",
+    "pdfjs-dist": "^6.5.438",
+    "three": "^0.187.0"
+  }
+}

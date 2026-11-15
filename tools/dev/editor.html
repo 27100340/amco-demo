@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plan editor (dev harness)</title>
+  <link rel="stylesheet" href="../../website/assets/fonts/fonts.css">
+  <link rel="stylesheet" href="../../website/assets/css/tokens.css">
+  <link rel="stylesheet" href="../../website/assets/css/base.css">
+  <link rel="stylesheet" href="../../website/assets/css/components.css">
+  <link rel="stylesheet" href="../../website/assets/css/pages/editor.css">
+  <style>
+    body { background: var(--color-canvas); }
+    .dev-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.5rem; padding: 0.75rem 1rem; }
+    .dev-head h1 { font-size: 1.5rem; }
+    .dev-head nav { display: flex; gap: 0.5rem; }
+    .dev-log { margin: 0 0 0 auto; color: var(--color-ink-soft); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+    .dev-stage { height: calc(100svh - 64px); padding: 0 1rem 1rem; }
+    @media (max-width: 900px) { .dev-stage { height: auto; } }
+  </style>
+</head>
+<body>
+  <header class="dev-head">
+    <h1>Plan editor</h1>
+    <nav class="seg" aria-label="Harness mode">
+      <a class="btn btn-ghost btn-sm" href="?mode=review" id="go-review">Review (DXF)</a>
+      <a class="btn btn-ghost btn-sm" href="?mode=trace" id="go-trace">Trace (scan)</a>
+    </nav>
+    <p class="dev-log" id="log" aria-live="polite">No changes yet.</p>
+  </header>
+  <main class="dev-stage" id="stage"></main>
+  <script type="module">
+    import { createPlanEditor } from '../../website/assets/app/editor/plan-editor.js';
+    import { createBuilding } from '../../website/assets/app/model/schema.js';
+    import { wallFootprints } from '../../website/assets/app/model/geometry.js';
+    import { twoRoomHouse } from '../../tests/fixtures/two-room-house.js';
+
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode') === 'trace' ? 'trace' : 'review';
+    document.getElementById(mode === 'trace' ? 'go-trace' : 'go-review').classList.remove('btn-ghost');
+    const log = document.getElementById('log');
+
+    /** DXF-like linework (millimetres) for the two-room house, plus a wardrobe wall the reader "missed". */
+    function houseEntities() {
+      const mm = (p) => [p[0] * 1000, p[1] * 1000];
+      const entities = [];
+      const footprints = wallFootprints(twoRoomHouse.walls);
+      for (const wall of twoRoomHouse.walls) {
+        const fp = footprints.get(wall.id);
+        entities.push({ type: 'LINE', layer: 'A-WALL', a: mm(fp.L[0]), b: mm(fp.L[1]) });
+        entities.push({ type: 'LINE', layer: 'A-WALL', a: mm(fp.R[0]), b: mm(fp.R[1]) });
+      }
+      entities.push({ type: 'POLY', layer: 'A-WALL', points: [[6000, 3600], [7885, 3600], [7885, 3715], [6000, 3715]], closed: true });
+      entities.push({ type: 'ARC', layer: 'A-DOOR', center: [4057, 550], radius: 900, startDeg: 90, endDeg: 180 });
+      entities.push({ type: 'LINE', layer: 'A-GLAZ', a: [1250, 5000], b: [2750, 5000] });
+      entities.push({ type: 'LINE', layer: 'A-GLAZ', a: [8000, 1900], b: [8000, 3100] });
+      entities.push({ type: 'CIRCLE', layer: 'S-COLS', center: [0, 0], radius: 150 });
+      entities.push({ type: 'TEXT', layer: 'A-AREA-IDEN', at: [1500, 2300], text: 'LOUNGE', height: 250, rotationDeg: 0 });
+      entities.push({ type: 'TEXT', layer: 'A-AREA-IDEN', at: [5400, 2300], text: 'BED ROOM', height: 250, rotationDeg: 0 });
+      entities.push({ type: 'TEXT', layer: 'A-ANNO-TTLB', at: [0, -1200], text: 'GROUND FLOOR PLAN', height: 300, rotationDeg: 0 });
+      entities.push({ type: 'INSERT', layer: 'A-DOOR', name: 'DOOR-900', at: [4000, 1000] });
+      return entities;
+    }
+
+    function siteEntities() {
+      return [
+        { type: 'POLY', layer: 'C-PROP', points: [[-3000, -4000], [11000, -4000], [11000, 9000], [-3000, 9000]], closed: true },
+        { type: 'TEXT', layer: 'A-ANNO', at: [1000, -3500], text: 'ROAD 30\'-0" WIDE', height: 300, rotationDeg: 0 }
+      ];
+    }
+
+    /** A scanned-looking ground floor plan, 10 mm per pixel, with a 30'-0" dimension along the top. */
+    function scannedPlan() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1300;
+      canvas.height = 1000;
+      const g = canvas.getContext('2d');
+      g.fillStyle = '#f7f5ef';
+      g.fillRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < 9000; i++) {
+        g.fillStyle = `rgba(80, 70, 50, ${Math.random() * 0.05})`;
+        g.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
+      }
+      const ft = 30.48;
+      const ox = 180;
+      const oy = 160;
+      const w = 30 * ft;
+      const h = 24 * ft;
+      const t = 22.86;
+      g.strokeStyle = '#3a3a3a';
+      g.lineWidth = 2;
+      g.strokeRect(ox - t / 2, oy - t / 2, w + t, h + t);
+      g.strokeRect(ox + t / 2, oy + t / 2, w - t, h - t);
+      g.lineWidth = 1.6;
+      const px = ox + 16 * ft;
+      g.strokeRect(px - 5.7, oy + t / 2, 11.4, h - t);
+      const py = oy + 13 * ft;
+      g.strokeRect(px + 5.7, py - 5.7, w - 16 * ft - t / 2 - 5.7, 11.4);
+      g.fillStyle = '#f7f5ef';
+      g.fillRect(px - 8, oy + 3 * ft, 16, 3 * ft);
+      g.beginPath();
+      g.arc(px - 6, oy + 3 * ft, 3 * ft, Math.PI / 2, Math.PI);
+      g.stroke();
+      g.strokeStyle = '#555';
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(ox, oy - 70);
+      g.lineTo(ox + w, oy - 70);
+      for (const x of [ox, ox + w]) {
+        g.moveTo(x, oy - 85);
+        g.lineTo(x, oy - 30);
+        g.moveTo(x - 8, oy - 62);
+        g.lineTo(x + 8, oy - 78);
+      }
+      g.stroke();
+      g.fillStyle = '#333';
+      g.font = '600 22px Arial, sans-serif';
+      g.textAlign = 'center';
+      g.fillText('30\'-0"', ox + w / 2, oy - 82);
+      g.font = '600 20px Arial, sans-serif';
+      g.fillText('LOUNGE', ox + 8 * ft, oy + 12 * ft);
+      g.fillText('BED ROOM', ox + 23 * ft, oy + 6 * ft);
+      g.fillText('KITCHEN', ox + 23 * ft, oy + 19 * ft);
+      g.font = '600 26px Arial, sans-serif';
+      g.fillText('GROUND FLOOR PLAN', ox + w / 2, oy + h + 90);
+      return canvas;
+    }
+
+    let options;
+    if (mode === 'review') {
+      options = {
+        building: twoRoomHouse,
+        backdrops: {
+          g: { kind: 'dxf', entities: houseEntities(), factor: 0.001, offset: [0, 0] },
+          site: { kind: 'dxf', entities: siteEntities(), factor: 0.001, offset: [0, 0] }
+        },
+        schedule: {
+          D1: { type: 'door', width: 0.9, height: 2.1, sill: 0 },
+          W1: { type: 'window', width: 1.5, height: 1.2, sill: 0.9 },
+          W2: { type: 'window', width: 1.2, height: 1.2, sill: 0.9 }
+        }
+      };
+    } else {
+      const building = createBuilding({ id: 'trace-demo', name: 'My house', kind: 'house', source: 'trace' });
+      building.levels = [
+        { id: 'g', name: 'Ground floor', elevation: 0, height: 3.2, ceiling: 3.05, slab: 0.15 },
+        { id: 'f', name: 'First floor', elevation: 3.2, height: 3.2, ceiling: 3.05, slab: 0.15, parapet: 1.07 }
+      ];
+      options = {
+        building,
+        backdrops: { g: { kind: 'bitmap', bitmap: scannedPlan(), metresPerPixel: null, offset: [0, 0] } },
+        schedule: {}
+      };
+    }
+
+    const editor = createPlanEditor(document.getElementById('stage'), {
+      ...options,
+      mode,
+      onChange(building, schedule) {
+        const openings = building.walls.reduce((n, w) => n + w.openings.length, 0);
+        log.textContent = `onChange: ${building.walls.length} walls · ${openings} openings · ${building.rooms.length} rooms · ${Object.keys(schedule).length} sizes`;
+        window.lastChange = { building, schedule };
+      },
+      onPreview3D(building) {
+        log.textContent = `Preview 3D requested: ${building.walls.length} walls, ${building.rooms.length} rooms`;
+        window.lastPreview = building;
+      }
+    });
+    window.editor = editor;
+    window.editorBackdrops = options.backdrops;
+  </script>
+</body>
+</html>

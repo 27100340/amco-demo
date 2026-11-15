@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paint calculator and tools | Amco Paints</title>
+  <meta name="description" content="Work out how much Amco paint you need and what it will cost, find the right paint for your city, fix seelan, shora and cracks, and plan the job to finish before Eid or a wedding.">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="stylesheet" href="assets/css/pages/tools.css">
+</head>
+<body data-page="tools">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header data-site-header></header>
+
+  <main id="main">
+    <section class="editorial-head" aria-labelledby="page-title">
+      <div class="wrap editorial-grid">
+        <div class="editorial-copy">
+          <p class="eyebrow">Tools and advice</p>
+          <h1 id="page-title">Plan the job before you buy the paint</h1>
+          <p class="urdu" lang="ur">پہلے حساب، پھر خریداری</p>
+          <p class="lede">Four small tools for the questions everyone asks at the paint shop: how much do I need, which paint suits my city, what is wrong with my wall, and when must the painters start.</p>
+          <nav class="tool-nav row" aria-label="Tools on this page">
+            <a href="#calculator">Paint calculator</a>
+            <a href="#city">Paint for your city</a>
+            <a href="#doctor">Wall doctor</a>
+            <a href="#countdown">Eid and shaadi countdown</a>
+          </nav>
+        </div>
+        <figure class="editorial-media">
+          <img src="assets/img/photos/space-exterior-1280.webp" srcset="assets/img/photos/space-exterior-640.webp 640w, assets/img/photos/space-exterior-1280.webp 1280w, assets/img/photos/space-exterior-1920.webp 1920w" sizes="(min-width: 981px) 40vw, 100vw" width="1920" height="1440" decoding="async" alt="A contemporary two-storey house with white rendered walls, timber panels and a pool">
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" id="calculator" aria-labelledby="calculator-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="calculator-title">How much paint, and what will it cost?</h2>
+            <p class="lede">Measure the room or pick your house size. You get the litres, the tins to ask for and a price to expect.</p>
+          </div>
+          <p class="urdu" lang="ur">کتنا رنگ لگے گا؟</p>
+        </div>
+
+        <div class="split">
+          <div class="calc-form form-stack">
+            <div class="panel form-stack">
+              <h3>What are you painting?</h3>
+              <div class="field">
+                <span class="label" id="calc-mode-label">How do you want to measure?</span>
+                <div class="seg" id="calc-mode" role="group" aria-labelledby="calc-mode-label">
+                  <button type="button" data-value="rooms" aria-pressed="true">Room by room</button>
+                  <button type="button" data-value="house" aria-pressed="false">Whole house</button>
+                </div>
+              </div>
+
+              <div class="form-stack" id="rooms-pane">
+                <p class="small muted">Measure in feet. We take off 21 sq ft for each door and 15 sq ft for each window.</p>
+                <ul class="room-list" id="room-list"></ul>
+                <div class="row">
+                  <button class="btn btn-ghost" type="button" id="add-room">Add another room</button>
+                </div>
+                <p class="small muted" id="room-limit" hidden>That is the most rooms this calculator takes. For a bigger job, switch to Whole house.</p>
+              </div>
+
+              <div class="form-stack" id="house-pane" hidden>
+                <div class="field">
+                  <span class="label" id="house-size-label">House size</span>
+                  <div class="seg seg-fill" id="house-size" role="group" aria-labelledby="house-size-label"></div>
+                </div>
+                <div class="field" role="group" aria-labelledby="house-parts-label" id="house-parts">
+                  <span class="label" id="house-parts-label">Which parts are you painting?</span>
+                  <div class="check-list">
+                    <label class="check"><input type="checkbox" data-part="walls" checked><span>Interior walls, <span class="muted" data-part-area="walls"></span></span></label>
+                    <label class="check"><input type="checkbox" data-part="ceilings" checked><span>Ceilings, <span class="muted" data-part-area="ceilings"></span></span></label>
+                    <label class="check"><input type="checkbox" data-part="exterior" checked><span>Exterior walls, <span class="muted" data-part-area="exterior"></span></span></label>
+                  </div>
+                </div>
+                <p class="small muted">These are typical figures for a double-storey house of this size. For an exact number, measure room by room.</p>
+              </div>
+            </div>
+
+            <div class="panel form-stack">
+              <h3>Paint and finish</h3>
+              <div class="field">
+                <label for="wall-product" id="wall-product-label">Paint for the walls</label>
+                <select class="select" id="wall-product"></select>
+              </div>
+              <div class="field" id="exterior-field" hidden>
+                <label for="exterior-product">Paint for exterior walls</label>
+                <select class="select" id="exterior-product"></select>
+              </div>
+              <div class="field">
+                <span class="label" id="ceiling-paint-label">Paint for ceilings</span>
+                <div class="seg seg-fill" id="ceiling-paint" role="group" aria-labelledby="ceiling-paint-label">
+                  <button type="button" data-value="standard" aria-pressed="true">Smart Super Emulsion</button>
+                  <button type="button" data-value="walls" aria-pressed="false">Same paint as the walls</button>
+                </div>
+                <p class="hint">Smart Super Emulsion is the low-cost choice overhead. This only counts if you include a ceiling.</p>
+              </div>
+              <div class="field">
+                <span class="label" id="coats-label">Number of coats</span>
+                <div class="seg" id="coats" role="group" aria-labelledby="coats-label">
+                  <button type="button" data-value="1" aria-pressed="false">1 coat</button>
+                  <button type="button" data-value="2" aria-pressed="true">2 coats</button>
+                  <button type="button" data-value="3" aria-pressed="false">3 coats</button>
+                </div>
+              </div>
+              <div class="field">
+                <span class="label" id="condition-label">Wall condition</span>
+                <div class="seg seg-fill" id="condition" role="group" aria-labelledby="condition-label">
+                  <button type="button" data-value="repaint" aria-pressed="true">Repaint, same colour</button>
+                  <button type="button" data-value="change" aria-pressed="false">Colour change</button>
+                  <button type="button" data-value="fresh" aria-pressed="false">New plaster</button>
+                </div>
+                <p class="hint" id="condition-hint"></p>
+              </div>
+              <div class="field">
+                <label class="check"><input type="checkbox" id="wastage" checked><span>Add 10% for wastage</span></label>
+                <p class="hint">Covers what stays in the roller and tray, plus a little for touch-ups later.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="result-col">
+            <p class="print-only" id="estimate-date"></p>
+            <p class="visually-hidden" role="status" id="estimate-status"></p>
+            <div class="result stack" id="estimate"></div>
+            <p class="note">Prices are indicative retail prices and exclude labour. Your dealer's price can differ, and rough or very absorbent walls take more paint.</p>
+            <div class="row estimate-actions" id="estimate-actions">
+              <button class="btn btn-brand" type="button" id="save-estimate">Save estimate to my project</button>
+              <a class="btn btn-wa" id="send-estimate" target="_blank" rel="noopener" href="#">Send to Amco on WhatsApp</a>
+              <button class="btn btn-ghost" type="button" id="print-estimate">Print estimate</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band band-wash" id="city" aria-labelledby="city-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="city-title">Paint for your city</h2>
+            <p class="lede">Karachi salt, Lahore monsoon and Multan sun each wear paint down in a different way. Pick your city to see what lasts there.</p>
+          </div>
+          <p class="urdu" lang="ur">آپ کے شہر کے موسم کے مطابق رنگ</p>
+        </div>
+        <div class="grid pick-grid" id="city-list" role="group" aria-label="Choose your city"></div>
+        <div id="city-detail" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="band" id="doctor" aria-labelledby="doctor-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="doctor-title">Wall doctor</h2>
+            <p class="lede">Seelan, shora, cracks or peeling paint. Pick what you see on your wall and get the fix, step by step.</p>
+          </div>
+          <p class="urdu" lang="ur">دیوار کا علاج</p>
+        </div>
+        <div class="grid pick-grid" id="problem-list" role="group" aria-label="Choose the problem on your wall"></div>
+        <div id="problem-detail" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="band band-wash" id="countdown" aria-labelledby="countdown-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="countdown-title">Eid and shaadi countdown</h2>
+            <p class="lede">Tell us the date and the size of the job. We work backwards so the paint is dry and the smell is gone before the guests arrive.</p>
+          </div>
+          <p class="urdu" lang="ur">عید اور شادی سے پہلے گھر تیار</p>
+        </div>
+
+        <div class="split">
+          <div class="panel form-stack">
+            <h3>Your occasion</h3>
+            <div class="field">
+              <span class="label" id="occasion-label">What are you getting ready for?</span>
+              <div class="seg seg-fill" id="occasion" role="group" aria-labelledby="occasion-label">
+                <button type="button" data-value="fitr" aria-pressed="true">Eid ul-Fitr 2027</button>
+                <button type="button" data-value="adha" aria-pressed="false">Eid ul-Adha 2027</button>
+                <button type="button" data-value="own" aria-pressed="false">My own date</button>
+              </div>
+              <p class="hint" id="occasion-hint"></p>
+            </div>
+            <div class="field" id="custom-date-field" hidden>
+              <label for="custom-date">Your date, for example the mehndi or the baraat</label>
+              <input class="input" type="date" id="custom-date" aria-describedby="custom-date-error">
+              <p class="small field-error" id="custom-date-error" hidden></p>
+            </div>
+            <div class="field">
+              <span class="label" id="job-size-label">How big is the job?</span>
+              <div class="seg seg-fill" id="job-size" role="group" aria-labelledby="job-size-label">
+                <button type="button" data-value="rooms" aria-pressed="true">1 to 2 rooms</button>
+                <button type="button" data-value="marla5" aria-pressed="false">5 marla house</button>
+                <button type="button" data-value="marla10" aria-pressed="false">10 marla house</button>
+                <button type="button" data-value="kanal" aria-pressed="false">1 kanal house</button>
+              </div>
+              <p class="hint" id="job-hint"></p>
+            </div>
+            <label class="check"><input type="checkbox" id="needs-repair"><span>Walls need putty or damp repair</span></label>
+            <p class="note">Eid dates are expected dates and depend on moon sighting. They can move by a day, so do not plan to the last hour.</p>
+          </div>
+
+          <div class="form-stack" id="countdown-output" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer data-site-footer></footer>
+
+  <script src="assets/js/shades.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script src="assets/js/tools.js"></script>
+</body>
+</html>

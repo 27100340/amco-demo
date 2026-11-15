@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Engine harness (dev)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #e9e6e1; font: 12px/1.4 system-ui, sans-serif; color: #222; }
+  #stage { position: absolute; inset: 0; }
+  #studio { min-height: 100vh; }
+  #report { position: absolute; left: 8px; bottom: 8px; margin: 0; padding: 6px 8px; max-width: 60ch; background: rgba(255, 255, 255, 0.85); font: 11px/1.4 ui-monospace, monospace; white-space: pre-wrap; }
+  body.clean #report { display: none; }
+</style>
+<link rel="icon" href="../../website/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../website/assets/css/site.css">
+<link rel="stylesheet" href="../../website/assets/css/pages/studio.css">
+<script type="importmap">
+{ "imports": { "three": "../../website/assets/vendor/three/three.module.js", "three/addons/": "../../website/assets/vendor/three/addons/" } }
+</script>
+<script src="../../website/assets/js/shades.js"></script>
+<script src="../../website/assets/js/data.js"></script>
+<script src="../../website/assets/js/site.js"></script>
+</head>
+<body>
+<div id="stage"></div>
+<pre id="report">loading…</pre>
+<script type="module">
+/*
+  Engine harness. Query parameters:
+    property=<catalogue id>   load a showcase property instead of the two-room fixture
+    fixture=villa             load the two-storey dev house with furniture and a site
+    fixture=sample            load the importer's sample house (no furniture, like a customer's own drawings)
+    view=<view id>            initial view (exterior, dollhouse, room:<id>, or a building view id)
+    quality=high|medium|low   quality tier (default high)
+    light=day|warm|cool       light mode
+    studio=1                  mount the full studio UI instead of a bare viewer
+    clean=1                   hide the report overlay (for screenshots)
+  Exposes window.__viewer, window.__probe(surfaceId) and sets window.__amcoReady when drawn.
+*/
+import { createViewer } from '../../website/assets/app/engine/viewer.js';
+import { findProperty } from '../../website/assets/app/properties/index.js';
+import { twoRoomHouse } from '../../tests/fixtures/two-room-house.js';
+
+const query = new URLSearchParams(location.search);
+const report = document.getElementById('report');
+if (query.get('clean')) document.body.classList.add('clean');
+
+/** sRGB 0..255 -> CIE Lab (D65). */
+function toLab([r, g, b]) {
+  const lin = (v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const R = lin(r);
+  const G = lin(g);
+  const B = lin(b);
+  const x = (R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047;
+  const y = R * 0.2126 + G * 0.7152 + B * 0.0722;
+  const z = (R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883;
+  const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+
+/** CIEDE2000 colour difference. */
+function deltaE2000(l1, l2) {
+  const [L1, a1, b1] = l1;
+  const [L2, a2, b2] = l2;
+  const rad = Math.PI / 180;
+  const C1 = Math.hypot(a1, b1);
+  const C2 = Math.hypot(a2, b2);
+  const Cm = (C1 + C2) / 2;
+  const G = 0.5 * (1 - Math.sqrt(Math.pow(Cm, 7) / (Math.pow(Cm, 7) + Math.pow(25, 7))));
+  const a1p = (1 + G) * a1;
+  const a2p = (1 + G) * a2;
+  const C1p = Math.hypot(a1p, b1);
+  const C2p = Math.hypot(a2p, b2);
+  const h1p = (Math.atan2(b1, a1p) / rad + 360) % 360;
+  const h2p = (Math.atan2(b2, a2p) / rad + 360) % 360;
+  const dLp = L2 - L1;
+  const dCp = C2p - C1p;
+  let dhp = h2p - h1p;
+  if (C1p * C2p === 0) dhp = 0;
+  else if (dhp > 180) dhp -= 360;
+  else if (dhp < -180) dhp += 360;
+  const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin((dhp / 2) * rad);
+  const Lm = (L1 + L2) / 2;
+  const Cmp = (C1p + C2p) / 2;
+  let hm = h1p + h2p;
+  if (C1p * C2p !== 0) {
+    if (Math.abs(h1p - h2p) > 180) hm = h1p + h2p < 360 ? (h1p + h2p + 360) / 2 : (h1p + h2p - 360) / 2;
+    else hm = (h1p + h2p) / 2;
+  }
+  const T = 1 - 0.17 * Math.cos((hm - 30) * rad) + 0.24 * Math.cos(2 * hm * rad) + 0.32 * Math.cos((3 * hm + 6) * rad) - 0.2 * Math.cos((4 * hm - 63) * rad);
+  const dTheta = 30 * Math.exp(-Math.pow((hm - 275) / 25, 2));
+  const Rc = 2 * Math.sqrt(Math.pow(Cmp, 7) / (Math.pow(Cmp, 7) + Math.pow(25, 7)));
+  const Sl = 1 + (0.015 * Math.pow(Lm - 50, 2)) / Math.sqrt(20 + Math.pow(Lm - 50, 2));
+  const Sc = 1 + 0.045 * Cmp;
+  const Sh = 1 + 0.015 * Cmp * T;
+  const Rt = -Math.sin(2 * dTheta * rad) * Rc;
+  return Math.sqrt(Math.pow(dLp / Sl, 2) + Math.pow(dCp / Sc, 2) + Math.pow(dHp / Sh, 2) + Rt * (dCp / Sc) * (dHp / Sh));
+}
+
+/** Draws the current WebGL frame into a 2D canvas and returns its pixels. */
+function grab(renderer, draw) {
+  draw();
+  const src = renderer.domElement;
+  const copy = document.createElement('canvas');
+  copy.width = src.width;
+  copy.height = src.height;
+  const g = copy.getContext('2d', { willReadFrequently: true });
+  g.drawImage(src, 0, 0);
+  return g.getImageData(0, 0, copy.width, copy.height).data;
+}
+
+/**
+ * Colour-fidelity probe: renders the scene, masks the pixels of the surface's paint group, takes
+ * the brightest 5% and compares their average with the swatch hex (CIEDE2000).
+ */
+async function probe(viewer, surfaceId) {
+  const { renderer, scene, camera, compiled, render } = viewer.internals();
+  const surface = viewer.getSurfaces().find((s) => s.id === surfaceId);
+  if (!surface || !surface.hex) return { error: 'surface not painted' };
+  await viewer.rendered();
+  const image = grab(renderer, render);
+  const THREE = await import('three');
+  const black = new THREE.MeshBasicMaterial({ color: 0x000000, fog: false, toneMapped: false, side: THREE.DoubleSide });
+  const white = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, toneMapped: false });
+  const saved = new Map();
+  const wanted = new Set(surface.groupIds.flatMap((id) => compiled.surfaceMeshes.get(id) || []));
+  scene.traverse((o) => {
+    if (o.isMesh || o.isInstancedMesh) {
+      saved.set(o, o.material);
+      o.material = wanted.has(o) ? white : black;
+    }
+  });
+  const background = scene.background;
+  scene.background = new THREE.Color(0x000000);
+  const mask = grab(renderer, () => renderer.render(scene, camera));
+  scene.background = background;
+  for (const [o, m] of saved) o.material = m;
+  const pixels = [];
+  for (let i = 0; i < mask.length; i += 4) {
+    if (mask[i] > 200) {
+      const r = image[i];
+      const g = image[i + 1];
+      const b = image[i + 2];
+      pixels.push({ r, g, b, y: 0.2126 * r + 0.7152 * g + 0.0722 * b });
+    }
+  }
+  if (!pixels.length) return { error: 'surface not visible' };
+  pixels.sort((p, q) => q.y - p.y);
+  const top = pixels.slice(0, Math.max(1, Math.round(pixels.length * 0.05)));
+  const mean = [0, 1, 2].map((k) => top.reduce((sum, p) => sum + [p.r, p.g, p.b][k], 0) / top.length);
+  const hex = surface.hex;
+  const swatch = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
+  const dE = deltaE2000(toLab(swatch), toLab(mean));
+  const pct = (q) => {
+    const p = pixels[Math.min(pixels.length - 1, Math.floor(pixels.length * q))];
+    return [p.r, p.g, p.b];
+  };
+  viewer.internals().render();
+  return { surfaceId, code: surface.code, hex, swatch, rendered: mean.map(Math.round), deltaE: Math.round(dE * 100) / 100, p10: pct(0.1), p50: pct(0.5), p90: pct(0.9), pixels: pixels.length };
+}
+
+
+/** A two-storey dev house on a 10 marla plot: T-junctions, cladding, furniture, site and street. */
+function villa() {
+  const W = (id, level, a, b, thickness, role, openings = [], extra = {}) => ({ id, level, a, b, thickness, role, openings, ...extra });
+  const win = (id, at, width, height = 1.5, sill = 0.9) => ({ id, type: 'window', at, width, height, sill });
+  const door = (id, at, width = 0.9, height = 2.1) => ({ id, type: 'door', at, width, height, sill: 0 });
+  const walls = [
+    W('gs', 'g', [0.85, 5], [9.85, 5], 0.23, 'exterior', [door('d-main', 2.2, 1.2, 2.4), win('w-g1', 6.6, 2.4, 1.6, 0.8)]),
+    W('ge', 'g', [9.85, 5], [9.85, 16], 0.23, 'exterior', [win('w-g2', 7.2, 1.5)]),
+    W('gn', 'g', [9.85, 16], [0.85, 16], 0.23, 'exterior', [win('w-g3', 2.4, 1.8), win('w-g4', 6.6, 1.2, 1.2, 1.1)]),
+    W('gw', 'g', [0.85, 16], [0.85, 5], 0.23, 'exterior', [win('w-g5', 8.5, 1.5)], { cladding: { right: 'stone-cladding' } }),
+    W('gp', 'g', [5.6, 5], [5.6, 16], 0.115, 'partition', [door('d-g1', 2.6), { id: 'o-g1', type: 'opening', at: 8.2, width: 1.4, height: 2.4, sill: 0 }]),
+    W('gx', 'g', [0.85, 10], [5.6, 10], 0.115, 'partition', [door('d-g2', 3.6)]),
+    W('fs', 'f', [0.85, 5], [9.85, 5], 0.23, 'exterior', [win('w-f1', 2.6, 1.8), win('w-f2', 6.8, 2.4, 1.6, 0.8)]),
+    W('fe', 'f', [9.85, 5], [9.85, 16], 0.23, 'exterior', [win('w-f3', 5.5, 1.5)]),
+    W('fn', 'f', [9.85, 16], [0.85, 16], 0.23, 'exterior', [win('w-f4', 2.5, 1.5), win('w-f5', 6.9, 0.9, 0.9, 1.4)]),
+    W('fw', 'f', [0.85, 16], [0.85, 5], 0.23, 'exterior', [win('w-f6', 7, 1.5)]),
+    W('fp', 'f', [5.6, 5], [5.6, 16], 0.115, 'partition', [door('d-f1', 3.2), door('d-f2', 8.6)]),
+    W('fx', 'f', [0.85, 11.5], [5.6, 11.5], 0.115, 'partition', [door('d-f3', 2.6, 0.8)])
+  ];
+  const fx = (kit, level, at, rotation = 0, params) => ({ kit, level, at, rotation, ...(params ? { params } : {}) });
+  return {
+    schema: 'amco.building/1', id: 'dev-villa', name: 'Dev villa', kind: 'house', source: 'showcase',
+    levels: [
+      { id: 'g', name: 'Ground floor', elevation: 0, height: 3.35, ceiling: 3.05, slab: 0.15 },
+      { id: 'f', name: 'First floor', elevation: 3.35, height: 3.2, ceiling: 2.95, slab: 0.15, parapet: 1.0 }
+    ],
+    walls,
+    rooms: [
+      { id: 'drawing', level: 'g', name: 'Drawing room', use: 'drawing', at: [3, 7.5] },
+      { id: 'kitchen', level: 'g', name: 'Kitchen', use: 'kitchen', at: [3, 13] },
+      { id: 'lounge', level: 'g', name: 'Lounge', use: 'lounge', at: [7.7, 10.5] },
+      { id: 'kids', level: 'f', name: 'Kids bedroom', use: 'bedroom', at: [3, 8] },
+      { id: 'bath', level: 'f', name: 'Bathroom', use: 'bath', at: [3, 13.5] },
+      { id: 'master', level: 'f', name: 'Master bedroom', use: 'bedroom', at: [7.7, 10.5] }
+    ],
+    site: {
+      boundary: [[0, 0], [10.7, 0], [10.7, 19.8], [0, 19.8]],
+      boundaryWall: { height: 2.1, thickness: 0.23, gates: [{ at: [7.6, 0], width: 4.2 }] },
+      ground: [
+        { polygon: [[0, 0], [10.7, 0], [10.7, 19.8], [0, 19.8]], material: 'lawn' },
+        { polygon: [[5.4, 0], [10.7, 0], [10.7, 5], [5.4, 5]], material: 'paving' },
+        { polygon: [[1.6, 0], [2.8, 0], [2.8, 5], [1.6, 5]], material: 'paving' }
+      ],
+      street: { side: 'south', width: 9 }
+    },
+    fixtures: [
+      fx('sofa.l-shape', 'g', [8.9, 11], 270), fx('table.coffee', 'g', [7.5, 10.8]), fx('rug.rect', 'g', [7.6, 10.8], 90, { w: 2.6, d: 1.9 }),
+      fx('tv.unit', 'g', [5.9, 10.8], 90), fx('lamp.floor', 'g', [9.4, 14.6]), fx('plant.floor', 'g', [9.3, 5.6]), fx('armchair.lounge', 'g', [7.4, 13.2], 180),
+      fx('sofa.3-seat', 'g', [3.2, 9.45], 180), fx('armchair.lounge', 'g', [1.6, 7.2], 90), fx('table.coffee', 'g', [3.2, 7.9]), fx('rug.rect', 'g', [3.2, 7.9], 0, { w: 2.4, d: 1.7, pattern: 'plain' }), fx('plant.floor', 'g', [5.1, 5.6]),
+      fx('kitchen.run', 'g', [3.2, 15.55], 180, { length: 4.2 }), fx('table.dining-6', 'g', [3.2, 12.6], 90), fx('fridge', 'g', [1.3, 10.5], 90),
+      fx('bed.king', 'f', [8.9, 10.5], 270), fx('nightstand', 'f', [9.5, 12], 270), fx('nightstand', 'f', [9.5, 9], 270), fx('wardrobe.3door', 'f', [5.95, 10.5], 90), fx('rug.rect', 'f', [7.7, 10.5], 90, { w: 2.2, d: 1.6 }),
+      fx('bed.single', 'f', [1.9, 8.2], 90), fx('wardrobe.2door', 'f', [5.2, 9.6], 270), fx('plant.small', 'f', [1.4, 5.6]),
+      fx('bath.vanity', 'f', [3.2, 15.6], 180), fx('bath.wc', 'f', [1.4, 15.4], 180),
+      fx('car.sedan', 'g', [8.1, 2.6], 0), fx('tree.ornamental', 'g', [1.4, 17.8]), fx('hedge', 'g', [3.4, 0.6], 90, { length: 3.4 }), fx('streetlight', 'g', [10.4, -1.6])
+    ],
+    views: [
+      { id: 'exterior', label: 'Exterior', mode: 'exterior' },
+      { id: 'dollhouse', label: 'Dollhouse', mode: 'dollhouse' },
+      { id: 'room:lounge', label: 'Lounge', mode: 'room', room: 'lounge' },
+      { id: 'room:drawing', label: 'Drawing room', mode: 'room', room: 'drawing' },
+      { id: 'room:master', label: 'Master bedroom', mode: 'room', room: 'master' }
+    ],
+    defaults: { finish: 'matt', paint: { '*': 'AM-1004', exterior: 'AM-1006', 'room:lounge': 'AM-1008', 'group:ge:L:lounge': 'AM-5006', 'group:gx:L:drawing': 'AM-6003', 'room:master': 'AM-1007', 'group:fe:L:master': 'AM-4007', 'site:inner': 'AM-1006', 'site:outer': 'AM-7006', 'lounge:ceiling': 'AM-1001', 'drawing:ceiling': 'AM-1001', 'kitchen:ceiling': 'AM-1001', 'master:ceiling': 'AM-1001', 'kids:ceiling': 'AM-1001', 'bath:ceiling': 'AM-1001' } }
+  };
+}
+
+async function start() {
+  const quality = query.get('quality') || 'high';
+  const id = query.get('property');
+  let building = twoRoomHouse;
+  if (query.get('fixture') === 'villa') {
+    building = villa();
+  } else if (query.get('fixture') === 'sample') {
+    const { sampleHouse } = await import('../sample-drawings/sample-house.js');
+    building = sampleHouse();
+  } else if (id) {
+    const entry = findProperty(id);
+    if (!entry) throw new Error(`Unknown property ${id}`);
+    building = await entry.load();
+  } else {
+    building = {
+      ...twoRoomHouse,
+      defaults: { finish: 'matt', paint: { '*': 'AM-1004', exterior: 'AM-1006', 'west:L': 'AM-5006', 'east:L': 'AM-4007', 'lounge:ceiling': 'AM-1001', 'bedroom:ceiling': 'AM-1001' } }
+    };
+  }
+  let viewer;
+  const t0 = performance.now();
+  if (query.get('studio')) {
+    document.getElementById('stage').remove();
+    const root = document.createElement('div');
+    root.id = 'studio';
+    document.body.prepend(root);
+    const { mountStudio } = await import('../../website/assets/app/ui/studio.js');
+    const studio = mountStudio(root, { building, quality });
+    viewer = studio.viewer;
+    await studio.ready;
+  } else {
+    viewer = createViewer(document.getElementById('stage'), { quality });
+    const { renderer } = viewer.internals();
+    const draw = renderer.render.bind(renderer);
+    window.__frames = [];
+    renderer.render = (scene, camera) => {
+      const t = performance.now();
+      draw(scene, camera);
+      if (window.__frames.length < 40) window.__frames.push([Math.round(t), Math.round(performance.now() - t)]);
+    };
+    await viewer.load(building);
+  }
+  const loaded = performance.now() - t0;
+  if (query.get('view')) viewer.setView(query.get('view'));
+  if (query.get('light')) viewer.setLight(query.get('light'));
+  await new Promise((resolve) => setTimeout(resolve, 900));
+  await viewer.rendered();
+  await viewer.rendered();
+  window.__viewer = viewer;
+  window.__probe = (surfaceId) => probe(viewer, surfaceId);
+  const info = viewer.internals();
+  report.textContent = `loaded in ${Math.round(loaded)} ms · quality ${viewer.getQuality()} · ${viewer.getSurfaces().length} surfaces · calls ${info.renderer.info.render.calls} · tris ${info.renderer.info.render.triangles}`;
+  window.__amcoReady = true;
+}
+
+start().catch((error) => {
+  console.error(error);
+  report.textContent = `Error: ${error.message}`;
+  window.__amcoError = String(error && error.stack || error);
+  window.__amcoReady = true;
+});
+</script>
+</body>
+</html>

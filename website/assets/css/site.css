@@ -1,0 +1,6 @@
+/* Amco Paints: the one stylesheet every page links. Page-specific rules live in
+   assets/css/pages/<page>.css and are linked separately after this file. */
+@import url('../fonts/fonts.css');
+@import url('tokens.css');
+@import url('base.css');
+@import url('components.css');

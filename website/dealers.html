@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dealers, painters and genuine tins | Amco Paints</title>
+  <meta name="description" content="Find an Amco Paints dealer in your city, check the batch code on your tin is genuine, book a painter Amco trusts or join the Ustad Club for painters.">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="stylesheet" href="assets/css/pages/dealers.css">
+</head>
+<body data-page="dealers">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header data-site-header></header>
+
+  <main id="main">
+    <section class="editorial-head" aria-labelledby="page-title">
+      <div class="wrap editorial-grid">
+        <div class="editorial-copy">
+          <p class="eyebrow">Dealers and painters</p>
+          <h1 id="page-title">Dealers, painters and genuine tins</h1>
+          <p class="urdu" lang="ur">ڈیلر، پینٹر اور اصلی ڈبہ</p>
+          <p class="lede">Find the shop nearest to you, check that the tin in your hand is a real Amco tin, and book a painter or join our club for painters.</p>
+          <div class="row">
+            <a class="btn" href="#find">Find a dealer</a>
+            <a class="btn btn-ghost" href="#verify">Check a tin is genuine</a>
+            <a class="btn-link" href="#painters">Book a painter or join the club</a>
+          </div>
+        </div>
+        <figure class="editorial-media">
+          <img src="assets/img/photos/painter-1280.webp" srcset="assets/img/photos/painter-640.webp 640w, assets/img/photos/painter-1280.webp 1280w, assets/img/photos/painter-1920.webp 1920w" sizes="(min-width: 981px) 40vw, 100vw" width="1920" height="1179" decoding="async" alt="A painter in a red work suit rolling yellow paint onto a white wall">
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" id="find" aria-labelledby="find-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="find-heading">Find a dealer</h2>
+            <p class="lede">Pick your city or type your area. We send you the dealer's phone number and address on WhatsApp.</p>
+          </div>
+          <p class="urdu" lang="ur">اپنے شہر میں ڈیلر تلاش کریں</p>
+        </div>
+
+        <p class="note find-note">Sample listings for this prototype. The real dealer register replaces them before launch.</p>
+
+        <div class="split">
+          <div class="find-tools">
+            <div class="field">
+              <span class="label" id="city-label">City</span>
+              <div class="seg seg-wrap" id="city-filter" role="group" aria-labelledby="city-label"></div>
+            </div>
+            <div class="field">
+              <label for="dealer-search">Search by city, area or shop name</label>
+              <input class="input" type="search" id="dealer-search" autocomplete="off" maxlength="60">
+            </div>
+          </div>
+
+          <div>
+            <p class="small muted" id="dealer-count" role="status"></p>
+            <div class="dealer-list" id="dealer-list"></div>
+            <noscript><p class="note">The dealer list needs JavaScript. Switch it on in your browser, or WhatsApp us for your nearest dealer.</p></noscript>
+          </div>
+        </div>
+
+        <div class="panel dealer-join">
+          <div class="row row-between">
+            <div class="stack stack-sm">
+              <h3>Become an Amco dealer</h3>
+              <p>If you run a paint, hardware or sanitary shop and want to stock Amco, send us your shop name, city and market. Our sales team will call you back about dealer terms.</p>
+            </div>
+            <a class="btn btn-wa" id="dealer-join-link" target="_blank" rel="noopener" href="#find">Ask about a dealership on WhatsApp</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band band-wash" id="verify" aria-labelledby="verify-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="verify-heading">Check a tin is genuine</h2>
+            <p class="lede">Do this before the painter opens the tin, while the shop will still take it back.</p>
+          </div>
+          <p class="urdu" lang="ur">اصلی ڈبہ پہچانیں</p>
+        </div>
+
+        <div class="split">
+          <div class="stack">
+            <p>Counterfeit paint and refilled tins are a known problem in Pakistani paint markets. They look right on the shelf, then fade, peel or dry patchy within months, and you pay for the whole job twice.</p>
+            <p>Every Amco tin carries a batch code on the sticker on its lid. It is the letters AMC followed by two groups of four digits, like this: <strong class="num">AMC-0000-0000</strong>. Type it in and we check it against our packing records.</p>
+            <p class="note"><strong>Demo codes for this prototype.</strong> Try AMC-2610-4827, AMC-2609-1175 or AMC-2611-3390. Any other code in the right format shows the warning.</p>
+          </div>
+
+          <div class="panel">
+            <form id="verify-form" novalidate>
+              <div class="field">
+                <label for="batch-code">Batch code from the lid sticker</label>
+                <span class="hint" id="batch-hint">It looks like AMC-0000-0000.</span>
+                <div class="verify-row">
+                  <input class="input batch-input" type="text" id="batch-code" name="batch" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" aria-describedby="batch-hint">
+                  <button class="btn" type="submit">Check this tin</button>
+                </div>
+              </div>
+            </form>
+            <div id="verify-result" role="status"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="painters" aria-labelledby="painters-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="painters-heading">Painters</h2>
+            <p class="lede">A good painter matters as much as good paint. Homeowners can ask us for one we know. Painters and contractors can join our club.</p>
+          </div>
+          <p class="urdu" lang="ur">پینٹر اور ٹھیکیدار</p>
+        </div>
+
+        <div class="split split-even">
+          <div class="panel stack">
+            <h3>Book a painter Amco trusts</h3>
+            <p>Tell us the job and we will suggest a painter from the Ustad Club who works in your city. You agree the rate with the painter yourself.</p>
+
+            <form class="form-fields" data-whatsapp-form data-intro="Assalam o alaikum, I would like to book a painter through Amco." novalidate>
+              <div class="field">
+                <label for="book-city">City</label>
+                <input class="input" type="text" id="book-city" name="city" autocomplete="address-level2" maxlength="60" required data-label="City" data-required-message="Tell us which city the job is in." aria-describedby="book-city-error">
+                <p class="field-error" id="book-city-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="book-job">Type of job</label>
+                <select class="select" id="book-job" name="job" required data-label="Job" data-required-message="Choose the type of job." aria-describedby="book-job-error">
+                  <option value="">Choose the type of job</option>
+                  <option>1 or 2 rooms</option>
+                  <option>Full house interior</option>
+                  <option>Exterior</option>
+                  <option>Full house, inside and outside</option>
+                </select>
+                <p class="field-error" id="book-job-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="book-date">Preferred start date (optional)</label>
+                <input class="input" type="date" id="book-date" name="date" data-rule="date" data-label="Preferred start date" data-empty-text="Flexible" aria-describedby="book-date-error">
+                <p class="field-error" id="book-date-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="book-name">Your name</label>
+                <input class="input" type="text" id="book-name" name="name" autocomplete="name" maxlength="80" required data-label="Name" data-required-message="Tell us your name so the painter knows who to ask for." aria-describedby="book-name-error">
+                <p class="field-error" id="book-name-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="book-phone">Phone number</label>
+                <span class="hint" id="book-phone-hint">With the mobile or city code, for example 0300 1234567.</span>
+                <input class="input" type="tel" id="book-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="20" required data-rule="phone" data-label="Phone" data-required-message="Tell us the number the painter should call." aria-describedby="book-phone-hint book-phone-error">
+                <p class="field-error" id="book-phone-error" hidden></p>
+              </div>
+              <div class="stack stack-sm">
+                <button class="btn btn-wa" type="submit">Send my booking request on WhatsApp</button>
+                <p class="small muted">Nothing is sent from this page. The button opens WhatsApp with your details typed in, and they only reach Amco if you press send there.</p>
+                <p class="small" data-form-status role="status"></p>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel stack">
+            <div class="row club-title">
+              <h3>Join the Amco Ustad Club</h3>
+              <span class="urdu" lang="ur">استاد</span>
+            </div>
+            <p>For painters and contractors who use Amco on their jobs.</p>
+            <ul class="list-check">
+              <li>Points on every drum you scan</li>
+              <li>Free colour training days</li>
+              <li>Priority job leads from this website</li>
+              <li>An ID card your customers can verify</li>
+            </ul>
+
+            <form class="form-fields" data-whatsapp-form data-intro="Assalam o alaikum, I would like to join the Amco Ustad Club." novalidate>
+              <div class="field">
+                <label for="club-name">Your name</label>
+                <input class="input" type="text" id="club-name" name="name" autocomplete="name" maxlength="80" required data-label="Name" data-required-message="Tell us your name." aria-describedby="club-name-error">
+                <p class="field-error" id="club-name-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="club-city">City</label>
+                <input class="input" type="text" id="club-city" name="city" autocomplete="address-level2" maxlength="60" required data-label="City" data-required-message="Tell us which city you work in." aria-describedby="club-city-error">
+                <p class="field-error" id="club-city-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="club-phone">Phone number</label>
+                <span class="hint" id="club-phone-hint">With the mobile or city code, for example 0300 1234567.</span>
+                <input class="input" type="tel" id="club-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="20" required data-rule="phone" data-label="Phone" data-required-message="Tell us the number we should call you on." aria-describedby="club-phone-hint club-phone-error">
+                <p class="field-error" id="club-phone-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="club-years">Years of experience</label>
+                <input class="input" type="text" id="club-years" name="years" inputmode="numeric" maxlength="2" required data-rule="years" data-label="Years of experience" data-required-message="Tell us how many years you have been painting." aria-describedby="club-years-error">
+                <p class="field-error" id="club-years-error" hidden></p>
+              </div>
+              <div class="stack stack-sm">
+                <button class="btn btn-wa" type="submit">Send my application on WhatsApp</button>
+                <p class="small muted">Nothing is sent from this page. The button opens WhatsApp with your details typed in, and they only reach Amco if you press send there.</p>
+                <p class="small" data-form-status role="status"></p>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer data-site-footer></footer>
+
+  <script src="assets/js/shades.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script src="assets/js/dealers.js"></script>
+</body>
+</html>

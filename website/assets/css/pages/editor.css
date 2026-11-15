@@ -1,0 +1,499 @@
+/* Plan editor (review and trace). Everything is scoped under .plan-editor.
+   Drawn like an architect's plan: solid charcoal wall poché, hairline linework,
+   light room fills, and one blue accent reserved for selection and drawing. */
+
+.plan-editor {
+  --pe-accent: #2563c9;
+  --pe-accent-soft: rgba(37, 99, 201, 0.12);
+  --pe-accent-fill: rgba(37, 99, 201, 0.24);
+  --pe-wall: var(--color-ink);
+  --pe-wall-hover: #3d4349;
+  --pe-room: rgba(214, 203, 184, 0.28);
+  --pe-room-hover: rgba(196, 183, 160, 0.4);
+  --pe-room-unnamed: rgba(226, 170, 80, 0.16);
+  --pe-backdrop: #9aa0a6;
+  --pe-backdrop-text: #b3b8bc;
+  --pe-halo: var(--color-paper);
+  --pe-panel-w: 344px;
+  --focus-ring: var(--pe-accent);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+/* ---------- Top bar ---------- */
+
+.plan-editor .pe-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-paper);
+}
+.plan-editor .pe-levels button,
+.plan-editor .pe-units button,
+.plan-editor .pe-seg button {
+  min-height: 36px;
+  padding: 0.3rem 0.8rem;
+  font-size: var(--text-sm);
+}
+.plan-editor .pe-units { display: inline-flex; flex-wrap: nowrap; }
+.plan-editor .pe-units button { white-space: nowrap; }
+.plan-editor .pe-preview { white-space: nowrap; }
+.plan-editor .pe-seg button { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; }
+.plan-editor .pe-seg-note { display: block; font-size: 0.6875rem; font-weight: 400; opacity: 0.75; }
+
+.plan-editor .pe-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+}
+.plan-editor .pe-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink-soft);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease);
+}
+.plan-editor .pe-tool:hover { color: var(--color-ink); background: var(--color-canvas-deep); }
+.plan-editor .pe-tool[aria-pressed='true'] {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 0 0 0 1px var(--color-line-strong), 0 1px 2px rgba(29, 32, 35, 0.08);
+}
+.plan-editor .pe-kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.25rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 3px;
+  color: var(--color-ink-soft);
+  font: 500 0.6875rem/1 var(--font-sans);
+}
+.plan-editor .pe-icon { width: 20px; height: 20px; flex: none; }
+.plan-editor .btn .pe-icon { width: 18px; height: 18px; }
+
+.plan-editor .pe-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.plan-editor .pe-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink);
+  font: 400 1.25rem/1 var(--font-sans);
+  cursor: pointer;
+}
+.plan-editor .pe-icon-btn:hover { background: var(--color-canvas); }
+.plan-editor .pe-icon-btn:disabled { opacity: 0.32; cursor: default; background: transparent; }
+
+/* ---------- Body: stage + panel ---------- */
+
+.plan-editor .pe-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--pe-panel-w);
+  min-height: 0;
+}
+.plan-editor .pe-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-paper);
+}
+.plan-editor .pe-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+.plan-editor .pe-canvas:focus { outline: none; }
+.plan-editor .pe-canvas:focus-visible { outline: 2px solid var(--pe-accent); outline-offset: -2px; }
+.plan-editor[data-input='pointer'] .pe-canvas:focus-visible { outline: none; }
+.plan-editor[data-tool='wall'] .pe-canvas,
+.plan-editor[data-tool='door'] .pe-canvas,
+.plan-editor[data-tool='window'] .pe-canvas,
+.plan-editor[data-tool='scale'] .pe-canvas,
+.plan-editor[data-tool='site'] .pe-canvas { cursor: crosshair; }
+.plan-editor[data-tool='room'] .pe-canvas { cursor: pointer; }
+
+/* ---------- Plan drawing (world layers) ---------- */
+
+.plan-editor .pe-world path,
+.plan-editor .pe-world line { vector-effect: non-scaling-stroke; }
+.plan-editor .pe-dxf { fill: none; stroke: var(--pe-backdrop); stroke-width: 1; }
+.plan-editor .pe-dxf-text { fill: var(--pe-backdrop-text); font-family: var(--font-sans); }
+.plan-editor .pe-room { fill: var(--pe-room); }
+.plan-editor .pe-room.is-unnamed { fill: var(--pe-room-unnamed); }
+.plan-editor .pe-room.is-hover { fill: var(--pe-room-hover); }
+.plan-editor .pe-room.is-selected { fill: var(--pe-accent-soft); }
+.plan-editor .pe-wall { fill: var(--pe-wall); stroke: var(--pe-wall); stroke-width: 0.6; stroke-linejoin: miter; }
+.plan-editor .pe-wall.is-hover { fill: var(--pe-wall-hover); stroke: var(--pe-wall-hover); }
+.plan-editor .pe-wall.is-selected { fill: var(--pe-accent); stroke: var(--pe-accent); }
+.plan-editor .pe-op-hit { fill: transparent; }
+.plan-editor .pe-op-line { fill: none; stroke: var(--color-ink); stroke-width: 1.2; }
+.plan-editor .pe-op-swing { fill: none; stroke: var(--color-ink-soft); stroke-width: 0.9; }
+.plan-editor .pe-op-dash { fill: none; stroke: var(--color-ink-soft); stroke-width: 1; stroke-dasharray: 4 3; }
+.plan-editor .pe-op.is-hover .pe-op-line,
+.plan-editor .pe-op.is-hover .pe-op-swing { stroke: var(--pe-accent); }
+.plan-editor .pe-op.is-selected .pe-op-line,
+.plan-editor .pe-op.is-selected .pe-op-swing,
+.plan-editor .pe-op.is-selected .pe-op-dash { stroke: var(--pe-accent); stroke-width: 2; }
+.plan-editor .pe-op.is-selected .pe-op-hit { fill: var(--pe-accent-soft); }
+.plan-editor .pe-ghost { fill: none; stroke: var(--color-line-strong); stroke-width: 1; stroke-dasharray: 3 3; }
+.plan-editor .pe-footprint { fill: #9fa4a8; stroke: #9fa4a8; stroke-width: 0.5; }
+.plan-editor .pe-footprint-fill { fill: var(--color-canvas-deep); stroke: var(--color-canvas-deep); stroke-width: 0.5; }
+.plan-editor .pe-plot { fill: none; stroke: var(--color-ink); stroke-width: 1.25; stroke-dasharray: 12 3 2 3; }
+.plan-editor .pe-plot.is-faint { stroke: var(--color-line-strong); }
+.plan-editor .pe-plot.is-hover { stroke: var(--pe-accent); }
+.plan-editor .pe-plot.is-selected { stroke: var(--pe-accent); stroke-width: 2; }
+.plan-editor .pe-bwall { fill: #50565c; }
+.plan-editor .pe-bwall.is-selected { fill: var(--pe-accent); }
+.plan-editor .pe-gate { fill: none; stroke: var(--color-ink); stroke-width: 2; stroke-dasharray: 6 4; }
+.plan-editor .pe-gate.is-selected { stroke: var(--pe-accent); }
+
+/* ---------- Overlay (screen space) ---------- */
+
+.plan-editor .pe-o-line { fill: none; stroke: var(--pe-accent); stroke-width: 1.5; }
+.plan-editor .pe-o-line.is-measure { stroke-dasharray: 6 4; }
+.plan-editor .pe-o-line.is-plot { stroke-dasharray: 12 3 2 3; }
+.plan-editor .pe-o-line.is-gate { stroke-width: 5; stroke-linecap: butt; }
+.plan-editor .pe-o-line.is-bad { stroke: var(--color-warn); }
+.plan-editor .pe-o-guide { stroke: var(--pe-accent); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.55; }
+.plan-editor .pe-o-fill { fill: var(--pe-accent-fill); stroke: var(--pe-accent); stroke-width: 1; }
+.plan-editor .pe-o-snap { fill: none; stroke: var(--pe-accent); stroke-width: 1.75; }
+.plan-editor .pe-o-dot { fill: var(--pe-accent); }
+.plan-editor .pe-o-dot.is-chain { fill: var(--color-paper); stroke: var(--pe-accent); stroke-width: 1.5; }
+.plan-editor .pe-o-handle { fill: var(--color-paper); stroke: var(--pe-accent); stroke-width: 1.5; }
+.plan-editor .pe-o-handle.is-hover { fill: var(--pe-accent); }
+.plan-editor .pe-o-cut { fill: var(--pe-accent-fill); }
+.plan-editor .pe-o-symline { fill: none; stroke: var(--pe-accent); stroke-width: 1.5; }
+.plan-editor .pe-o-symbol.is-bad .pe-o-cut { fill: rgba(154, 84, 0, 0.22); }
+.plan-editor .pe-o-symbol.is-bad .pe-o-symline { stroke: var(--color-warn); }
+
+.plan-editor .pe-o-label,
+.plan-editor .pe-o-room-name,
+.plan-editor .pe-o-room-area,
+.plan-editor .pe-o-flag,
+.plan-editor .pe-o-tag {
+  font-family: var(--font-sans);
+  paint-order: stroke;
+  stroke: var(--pe-halo);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.plan-editor .pe-o-room-name,
+.plan-editor .pe-o-room-area,
+.plan-editor .pe-o-flag,
+.plan-editor .pe-o-tag { text-anchor: middle; }
+.plan-editor .pe-o-label { font-size: 12px; font-weight: 600; fill: var(--color-ink); }
+.plan-editor .pe-o-label.is-strong,
+.plan-editor .pe-o-label.is-measure { fill: var(--pe-accent); }
+.plan-editor .pe-o-label.is-bad { fill: var(--color-warn); }
+.plan-editor .pe-o-room-back { fill: var(--color-paper); fill-opacity: 0.86; }
+.plan-editor .pe-o-room-name { font-size: 13px; font-weight: 600; fill: var(--color-ink); }
+.plan-editor .pe-o-room-area { font-size: 12px; fill: var(--color-ink-soft); font-variant-numeric: tabular-nums; }
+.plan-editor .pe-o-flag { font-size: 11px; font-weight: 600; fill: var(--color-warn); letter-spacing: 0.02em; }
+.plan-editor .pe-o-tag { font-size: 10px; font-weight: 600; fill: var(--color-ink-soft); letter-spacing: 0.04em; }
+
+/* ---------- Stage furniture: tips, status, zoom, toast ---------- */
+
+.plan-editor .pe-tips {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  width: min(340px, calc(100% - 2 * var(--space-3)));
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: var(--shadow-1);
+}
+.plan-editor .pe-tips-close { position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; }
+.plan-editor .pe-tips-close .pe-icon { width: 16px; height: 16px; }
+.plan-editor .pe-tips-title { margin: 0 2rem var(--space-2) 0; font-weight: 600; }
+.plan-editor .pe-tips-text { margin: 0; color: var(--color-ink-soft); }
+.plan-editor .pe-tips-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; counter-reset: tip; }
+.plan-editor .pe-tips-list li { counter-increment: tip; }
+.plan-editor .pe-tip {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.35rem 0.25rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.plan-editor .pe-tip::before {
+  content: counter(tip);
+  display: inline-grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.plan-editor .pe-tip:hover { background: var(--color-canvas); color: var(--color-ink); }
+.plan-editor .is-next .pe-tip { color: var(--color-ink); font-weight: 500; }
+.plan-editor .is-next .pe-tip::before { border-color: var(--color-ink); background: var(--color-ink); color: var(--color-paper); }
+.plan-editor .is-done .pe-tip { text-decoration: line-through; text-decoration-color: var(--color-line-strong); }
+.plan-editor .is-done .pe-tip::before { content: '✓'; border-color: var(--color-ok); color: var(--color-ok); }
+
+.plan-editor .pe-status {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  max-width: calc(100% - 7rem);
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--color-ink-soft);
+  font-size: var(--text-xs);
+  pointer-events: none;
+}
+.plan-editor .pe-zoom {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  display: grid;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+}
+.plan-editor .pe-zoom .pe-icon-btn + .pe-icon-btn { border-top: 1px solid var(--color-line); border-radius: 0; }
+.plan-editor .pe-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 3.25rem;
+  max-width: min(480px, calc(100% - 2 * var(--space-4)));
+  padding: 0.65rem 0.95rem;
+  border-left: 3px solid var(--color-on-ink-soft);
+  border-radius: var(--radius-sm);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  font-size: var(--text-sm);
+  opacity: 0;
+  transform: translate(-50%, 6px);
+  transition: opacity 220ms var(--ease), transform 220ms var(--ease);
+  pointer-events: none;
+}
+.plan-editor .pe-toast[data-open='true'] { opacity: 1; transform: translate(-50%, 0); }
+.plan-editor .pe-toast[data-tone='warn'] { border-left-color: #e2a54a; }
+.plan-editor .pe-toast[data-tone='ok'] { border-left-color: #6fbf95; }
+
+/* ---------- Side panel ---------- */
+
+.plan-editor .pe-panel {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-4) var(--space-6);
+  border-left: 1px solid var(--color-line);
+  background: var(--color-paper);
+}
+.plan-editor .pe-section { display: grid; gap: var(--space-3); min-width: 0; }
+.plan-editor .pe-h {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+.plan-editor .pe-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  list-style: none;
+  cursor: pointer;
+}
+.plan-editor .pe-details > summary::-webkit-details-marker { display: none; }
+.plan-editor .pe-details > summary::after {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 200ms var(--ease);
+}
+.plan-editor .pe-details:not([open]) > summary::after { transform: rotate(-45deg); }
+.plan-editor .pe-details-body { display: grid; gap: var(--space-3); margin-top: var(--space-3); }
+.plan-editor .pe-section + .pe-section { padding-top: var(--space-5); border-top: 1px solid var(--color-line); }
+
+.plan-editor .pe-tool-opts { display: grid; gap: var(--space-3); }
+.plan-editor .pe-control { display: grid; gap: 0.35rem; min-width: 0; }
+.plan-editor .pe-label { font-size: var(--text-xs); font-weight: 600; color: var(--color-ink-soft); letter-spacing: 0.02em; }
+.plan-editor .pe-input,
+.plan-editor .pe-select { min-height: 40px; padding-block: 0.4rem; font-size: var(--text-sm); }
+.plan-editor .pe-input[aria-invalid='true'],
+.plan-editor .pe-cell[aria-invalid='true'] { border-color: var(--color-warn); }
+.plan-editor .pe-error { margin: 0; color: var(--color-warn); font-size: var(--text-xs); }
+.plan-editor .pe-hint { margin: 0; color: var(--color-ink-soft); font-size: var(--text-xs); }
+.plan-editor .pe-meta { margin: 0; color: var(--color-ink-soft); font-variant-numeric: tabular-nums; }
+.plan-editor .pe-meta.is-warn,
+.plan-editor .pe-flag-line { margin: 0; color: var(--color-warn); font-weight: 500; }
+.plan-editor .pe-ok-line { margin: 0; color: var(--color-ok); }
+.plan-editor .pe-status-line { margin: 0; }
+.plan-editor .pe-status-line.is-ok { color: var(--color-ok); }
+.plan-editor .pe-status-line.is-warn { color: var(--color-warn); }
+.plan-editor .pe-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.plan-editor .pe-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.plan-editor .pe-check { display: flex; align-items: center; gap: 0.55rem; min-height: 32px; cursor: pointer; }
+.plan-editor .pe-check input { width: 1.05rem; height: 1.05rem; margin: 0; accent-color: var(--color-ink); }
+.plan-editor .pe-range { width: 100%; accent-color: var(--color-ink); }
+.plan-editor .pe-delete { justify-self: start; }
+.plan-editor .pe-steps { display: grid; gap: 0.25rem; margin: 0; padding-left: 1.25rem; }
+.plan-editor .pe-steps .is-done { color: var(--color-ink-soft); text-decoration: line-through; }
+
+.plan-editor .pe-size-list,
+.plan-editor .pe-room-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.plan-editor .pe-size,
+.plan-editor .pe-room-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.7rem;
+  width: 100%;
+  min-height: 40px;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.plan-editor .pe-size:hover,
+.plan-editor .pe-room-item:hover { border-color: var(--color-line-strong); background: var(--color-canvas); }
+.plan-editor .pe-size[aria-pressed='true'],
+.plan-editor .pe-room-item[aria-pressed='true'] { border-color: var(--color-ink); box-shadow: inset 0 0 0 1px var(--color-ink); }
+.plan-editor .pe-size-note,
+.plan-editor .pe-room-item-area { margin-left: auto; color: var(--color-ink-soft); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.plan-editor .pe-room-item-name { font-weight: 500; }
+.plan-editor .pe-flag { flex-basis: 100%; color: var(--color-warn); font-size: var(--text-xs); font-weight: 600; }
+
+.plan-editor .pe-level { display: grid; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--color-line); }
+.plan-editor .pe-level-name { margin: 0; font-size: var(--text-sm); }
+
+.plan-editor .pe-sched { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.plan-editor .pe-srow {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+}
+.plan-editor .pe-srow-head { display: flex; align-items: center; gap: var(--space-2); }
+.plan-editor .pe-srow-head .pe-icon-btn { width: 32px; height: 32px; margin-left: auto; }
+.plan-editor .pe-srow-head .pe-icon { width: 16px; height: 16px; }
+.plan-editor .pe-srow-sizes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.plan-editor .pe-srow-size { display: grid; gap: 2px; }
+.plan-editor .pe-cell {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 0.45rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.plan-editor .pe-cell:focus-visible { outline-offset: 0; border-color: var(--color-ink); }
+.plan-editor .pe-cell-tag { width: 3.4rem; font-weight: 600; text-transform: uppercase; }
+.plan-editor .pe-cell-type { width: auto; flex: 0 1 8rem; padding-right: 0.2rem; }
+.plan-editor .pe-used { color: var(--color-ink-soft); font-size: var(--text-xs); white-space: nowrap; }
+
+.plan-editor .pe-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+.plan-editor .pe-stat strong { display: block; font: 400 var(--text-2xl)/1.05 var(--font-display); }
+.plan-editor .pe-stat span { color: var(--color-ink-soft); font-size: var(--text-xs); }
+.plan-editor .pe-checks { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.plan-editor .pe-checks li { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); color: var(--color-warn); }
+.plan-editor .pe-show { flex: none; font-size: var(--text-xs); }
+
+/* ---------- Narrow screens: panel below the drawing ---------- */
+
+@media (max-width: 1080px) {
+  .plan-editor .pe-kbd { display: none; }
+}
+
+@media (max-width: 900px) {
+  .plan-editor { height: auto; }
+  .plan-editor .pe-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(340px, 62svh) auto; }
+  .plan-editor .pe-panel { overflow: visible; border-left: 0; border-top: 1px solid var(--color-line); }
+  .plan-editor .pe-actions { margin-left: 0; width: 100%; }
+  .plan-editor .pe-preview { margin-left: auto; }
+}
+
+@media (max-width: 560px) {
+  .plan-editor .pe-bar { padding: var(--space-2); }
+  .plan-editor .pe-levels,
+  .plan-editor .pe-tools { width: 100%; min-width: 0; }
+  .plan-editor .pe-levels button { flex: 1 1 auto; padding-inline: 0.5rem; }
+  .plan-editor .pe-tool { flex: 1 1 0; justify-content: center; padding: 0 0.3rem; }
+  .plan-editor .pe-tool-label { display: none; }
+  .plan-editor .pe-actions { gap: var(--space-1); }
+  .plan-editor .pe-tips { top: var(--space-2); left: var(--space-2); width: calc(100% - 2 * var(--space-2)); padding: var(--space-2) var(--space-3); font-size: var(--text-xs); }
+  .plan-editor .pe-tips-title { margin-bottom: var(--space-1); }
+  .plan-editor .pe-tips-list li:not(.is-next) { display: none; }
+  .plan-editor .pe-status { left: var(--space-2); bottom: var(--space-2); max-width: calc(100% - 4.5rem); font-size: 0.6875rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-editor .pe-toast,
+  .plan-editor .pe-tool,
+  .plan-editor .pe-details > summary::after { transition: none; }
+}
