@@ -119,3 +119,30 @@ test('high-street-shops gives each unit its own front wall so façades paint sep
   for (const ids of fronts) assert.equal(ids.length, 1);
   assert.equal(new Set(fronts.flat()).size, 3);
 });
+
+for (const id of ['dha-residence', 'bahria-townhouse']) {
+  test(`${id}: every stair void sits wholly inside one first-floor room`, () => {
+    const building = buildings.find((b) => b.entry.id === id).building;
+    const upper = building.levels.find((l) => l.id === 'f');
+    assert.ok(upper.voids?.length > 0, 'level f has no voids');
+    const polygons = roomPolygons(building);
+    const rooms = building.rooms.filter((r) => r.level === 'f' && polygons.has(r.id));
+    for (const hole of upper.voids) {
+      const holder = rooms.find((r) => hole.every((p) => pointInPolygon(p, polygons.get(r.id))));
+      assert.ok(holder, `void ${JSON.stringify(hole)} is not inside a single first-floor room`);
+    }
+  });
+
+  test(`${id}: the stair reaches the first floor and every void has a guard rail`, () => {
+    const building = buildings.find((b) => b.entry.id === id).building;
+    const upper = building.levels.find((l) => l.id === 'f');
+    const stair = building.fixtures.find((fx) => fx.kit.startsWith('stair.'));
+    assert.equal(stair.params.height, upper.elevation);
+    assert.equal(stair.params.clip, undefined);
+    assert.ok(building.fixtures.some((fx) => fx.kit === 'balcony.rail' && fx.level === 'f' && upper.voids.some((hole) => {
+      const xs = hole.map((p) => p[0]);
+      const ys = hole.map((p) => p[1]);
+      return fx.at[0] >= Math.min(...xs) - 0.2 && fx.at[0] <= Math.max(...xs) + 0.2 && fx.at[1] >= Math.min(...ys) - 0.2 && fx.at[1] <= Math.max(...ys) + 0.2;
+    })), 'no rail beside the void');
+  });
+}

@@ -79,9 +79,15 @@ function fx(kit, level, x, y, rotation = 0, params) {
 /** Brick slips on the outside (R side) of an anticlockwise exterior wall. */
 const BRICK = { cladding: { right: 'brick' } };
 
+/**
+ * Stair well in the first-floor slab: the stair's width from where the flight climbs above 1 m up to
+ * its top step. The floor stays over the foot of the flight. Every vertex sits just inside the landing.
+ */
+const STAIR_WELL = [[0.45, 4.1], [1.45, 4.1], [1.45, 7.8], [0.45, 7.8]];
+
 const levels = [
   { id: 'g', name: 'Ground floor', elevation: 0, height: 3.3, ceiling: GROUND_CEILING, slab: 0.2 },
-  { id: 'f', name: 'First floor', elevation: 3.3, height: 3.2, ceiling: FIRST_CEILING, slab: 0.2, parapet: 1.0 }
+  { id: 'f', name: 'First floor', elevation: 3.3, height: 3.2, ceiling: FIRST_CEILING, slab: 0.2, parapet: 1.0, voids: [STAIR_WELL] }
 ];
 
 const walls = [
@@ -128,7 +134,7 @@ const f = 'f';
 
 const fixtures = [
   /* Stair hall: straight stair along the west wall, rising north from beside the front door. */
-  fx('stair.straight', g, 0.915, 5.215, 180, { height: 3.3, width: 1.0, clip: GROUND_CEILING }),
+  fx('stair.straight', g, 0.915, 5.215, 180, { height: 3.3, width: 1.0 }),
   fx('console.table', g, 2.27, 4.0, 270, { w: 1.0 }),
   fx('art.frame', g, 2.4425, 4.0, 270, { w: 0.6, h: 0.8, y: 1.6, seed: 10 }),
   fx('plant.floor', g, 1.0, 8.15, 0, { height: 1.4, seed: 21 }),
@@ -161,6 +167,8 @@ const fixtures = [
   /* Upper landing. */
   fx('plant.floor', f, 2.0, 2.95, 0, { height: 1.4, seed: 17 }),
   fx('art.frame', f, 2.4425, 4.4, 270, { w: 0.6, h: 0.8, y: 1.6, seed: 12 }),
+  fx('balcony.rail', f, 1.52, 5.95, 90, { length: 3.7 }),
+  fx('balcony.rail', f, 0.95, 4.03, 0, { length: 1.0 }),
 
   /* Front bedroom with balcony. */
   fx('bed.king', f, 6.085, 4.8, 270, { color: '#b3a796', accent: '#7f8f84' }),

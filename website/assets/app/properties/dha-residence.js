@@ -87,9 +87,16 @@ function fx(kit, level, x, y, rotation = 0, params) {
 /** Stone cladding on the outside (R side) of an anticlockwise exterior wall. */
 const STONE = { cladding: { right: 'stone-cladding' } };
 
+/**
+ * Stair well in the first-floor slab, an L: the half landing and the whole return flight (west half,
+ * up to the arch in f-b3), plus the south end of the outward flight, where it climbs above 1.2 m.
+ * The floor stays over the foot of that flight. Every vertex sits just inside the landing room.
+ */
+const STAIR_WELL = [[7.52, 6.0], [10.12, 6.0], [10.12, 8.03], [8.84, 8.03], [8.84, 10.1], [7.52, 10.1]];
+
 const levels = [
   { id: 'g', name: 'Ground floor', elevation: 0, height: 3.4, ceiling: GROUND_CEILING, slab: 0.2 },
-  { id: 'f', name: 'First floor', elevation: 3.4, height: 3.25, ceiling: FIRST_CEILING, slab: 0.2, parapet: 1.0 }
+  { id: 'f', name: 'First floor', elevation: 3.4, height: 3.25, ceiling: FIRST_CEILING, slab: 0.2, parapet: 1.0, voids: [STAIR_WELL] }
 ];
 
 const walls = [
@@ -184,7 +191,7 @@ const fixtures = [
   fx('lamp.pendant', g, 6.0, 8.0, 0, { ceiling: GROUND_CEILING, drop: 1.0, style: 'globe' }),
 
   /* Stair hall: dog-leg stair rising south to a half landing at the façade, then north. */
-  fx('stair.dogleg', g, 8.82, 8.03, 0, { height: 3.4, width: 2.6, length: 4.15, clip: GROUND_CEILING }),
+  fx('stair.dogleg', g, 8.82, 8.03, 0, { height: 3.4, width: 2.6, length: 4.15 }),
 
   /* Lounge (west half) and dining (east half). */
   fx('tv.unit', g, 0.74, 13.3, 90),
@@ -243,9 +250,11 @@ const fixtures = [
   fx('fan.ceiling', f, 3.9, 8.0, 0, { ceiling: FIRST_CEILING }),
 
   /* Upper landing. */
-  fx('plant.floor', f, 9.6, 6.5, 0, { species: 'areca', seed: 6 }),
-  fx('art.frame', f, 10.185, 8.0, 270, { w: 1.0, h: 1.4, y: 1.6, seed: 7 }),
-  fx('ottoman', f, 9.85, 8.0, 270, { color: '#7c8a7a' }),
+  fx('plant.floor', f, 9.7, 9.75, 0, { species: 'areca', seed: 6 }),
+  fx('art.frame', f, 10.185, 9.1, 270, { w: 1.0, h: 1.4, y: 1.6, seed: 7 }),
+  fx('ottoman', f, 9.85, 9.1, 270, { color: '#7c8a7a' }),
+  fx('balcony.rail', f, 8.91, 9.065, 90, { length: 2.07 }),
+  fx('balcony.rail', f, 9.545, 8.1, 0, { length: 1.15 }),
 
   /* Master bath. */
   fx('bath.vanity', f, 1.6, 12.2925, 180, { w: 1.0 }),
