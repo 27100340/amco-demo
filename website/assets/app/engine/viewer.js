@@ -56,6 +56,10 @@ const FOCUS_MIN = 1.2;
 const FOCUS_TURN = 24;
 /** Dollhouse: outdoor fixtures at least this tall (m) hide when they stand in front of the building. */
 const OCCLUDER_HEIGHT = 2.2;
+/** A surface whose area-weighted normal points up or down by more than this share is a ceiling. */
+const VERTICAL_SHARE = 0.7;
+/** Looking up at a ceiling: least plan distance (m) to the point looked at, so the pitch stays moderate. */
+const CEILING_REACH = 1.5;
 
 /**
  * Vertical field of view that keeps at least `minH` degrees across on narrow screens.
@@ -189,6 +193,9 @@ export function createViewer(container, options = {}) {
   let loadToken = 0;
   /** Load token whose shaders are compiling in the background (0 when none); no frame is drawn meanwhile. */
   let compiling = 0;
+  /** Timer of the fade between a room and another view (0 when none), and the token of that fade. */
+  let fadeTimer = 0;
+  let fadeToken = 0;
   const waiters = [];
   const animator = createPaintAnimator();
 
@@ -393,7 +400,7 @@ export function createViewer(container, options = {}) {
     const s = compiled.structureBounds;
     const shown = s.clone();
     shown.max.y = Math.min(shown.max.y, cutHeight());
-    const building = screenRect(shown);
+    const buildingRect = screenRect(shown);
     const depth = camera.position.distanceTo(shown.getCenter(scratch));
     for (const fixture of compiled.fixtures) {
       const { box } = fixture;
@@ -402,7 +409,7 @@ export function createViewer(container, options = {}) {
       const z = (box.min.z + box.max.z) / 2;
       if (x > s.min.x && x < s.max.x && z > s.min.z && z < s.max.z) continue;
       const r = screenRect(box);
-      if (r.maxX <= building.minX || r.minX >= building.maxX || r.maxY <= building.minY || r.minY >= building.maxY) continue;
+      if (r.maxX <= buildingRect.minX || r.minX >= buildingRect.maxX || r.maxY <= buildingRect.minY || r.minY >= buildingRect.maxY) continue;
       if (camera.position.distanceTo(box.getCenter(scratch)) < depth) found.add(fixture.object);
     }
     return found;
@@ -510,12 +517,13 @@ export function createViewer(container, options = {}) {
     const base = { south: 0, east: 90, north: 180, west: 270 }[street] ?? 0;
     const sunSide = lighting.sunAzimuth() - 180 - base;
     const toward = ((sunSide % 360) + 540) % 360 - 180 > 0 ? 1 : -1;
-    const facing = spec.focus ? surfaceFrame(spec.focus) : null;
+    const framing = spec.focus ? surfaceFrame(spec.focus) : null;
+    const facing = framing && !framing.vertical ? framing : null;
     let azimuth = THREE.MathUtils.degToRad(base + toward * (doll ? 32 : 30));
     let polar = doll ? DOLLHOUSE_POLAR : EXTERIOR_POLAR;
     if (facing) {
       azimuth = Math.atan2(facing.normal.x, facing.normal.z) + (doll ? 0 : THREE.MathUtils.degToRad(FOCUS_TURN));
-    } else if (spec.keepAngle && rig.getMode() === mode) {
+    } else if ((spec.keepAngle || framing) && rig.getMode() === mode) {
       const offset = new THREE.Vector3().subVectors(camera.position, rig.orbit.target);
       azimuth = Math.atan2(offset.x, offset.z);
       polar = THREE.MathUtils.clamp(Math.acos(THREE.MathUtils.clamp(offset.y / Math.max(offset.length(), 1e-6), -1, 1)), doll ? 0.35 : 0.2, doll ? 1.05 : 1.45);
@@ -587,8 +595,9 @@ export function createViewer(container, options = {}) {
   /**
    * Centre and facing of a paint group: the area-weighted normal of its faces, made horizontal
    * (for parapets, whose faces cancel out, the direction away from the middle of the building).
+   * `vertical` marks a surface that mostly faces up or down (a ceiling).
    * @param {string} id surface id
-   * @returns {{ centre: THREE.Vector3, normal: THREE.Vector3, box: THREE.Box3 }|null}
+   * @returns {{ centre: THREE.Vector3, normal: THREE.Vector3, box: THREE.Box3, vertical: boolean }|null}
    */
   function surfaceFrame(id) {
     if (!surfaceById.has(id)) return null;
@@ -625,10 +634,26 @@ export function createViewer(container, options = {}) {
     }
     if (box.isEmpty()) return null;
     const centre = box.getCenter(new THREE.Vector3());
+    const vertical = Math.abs(normal.y) > VERTICAL_SHARE * normal.length();
     normal.y = 0;
     if (normal.lengthSq() < 1e-6) normal.subVectors(centre, compiled.structureBounds.getCenter(new THREE.Vector3())).setY(0);
     if (normal.lengthSq() < 1e-6) normal.set(0, 0, 1);
-    return { centre, normal: normal.normalize(), box };
+    return { centre, normal: normal.normalize(), box, vertical };
+  }
+
+  /**
+   * Looking up at a ceiling: from where the visitor stands when already in the room (otherwise
+   * the room's usual standing point), keeping the heading and pitching up to the ceiling.
+   * @param {object} room compiled room
+   * @param {THREE.Vector3} centre centre of the ceiling
+   * @returns {{ eye: THREE.Vector3, look: THREE.Vector3 }}
+   */
+  function ceilingEye(room, centre) {
+    const here = view.mode === 'room' && view.room === room.id && rig.getMode() === 'room';
+    const eye = here ? camera.position.clone() : roomEye(room, {}).eye;
+    const heading = here ? rig.getLook().yaw : lookAngles(eye, centre).yaw;
+    const reach = Math.max(CEILING_REACH, Math.hypot(centre.x - eye.x, centre.z - eye.z));
+    return { eye, look: new THREE.Vector3(eye.x - Math.sin(heading) * reach, centre.y, eye.z - Math.cos(heading) * reach) };
   }
 
   /**
@@ -639,6 +664,7 @@ export function createViewer(container, options = {}) {
   function focusEye(room, surfaceId) {
     const facing = surfaceFrame(surfaceId);
     if (!facing) return null;
+    if (facing.vertical) return ceilingEye(room, facing.centre);
     const { centre, normal, box } = facing;
     const start = [centre.x, -centre.z];
     const out = [normal.x, -normal.z];
@@ -746,6 +772,38 @@ export function createViewer(container, options = {}) {
 
   const emitView = () => options.onView && options.onView({ mode: view.mode, level: view.level, room: view.room });
 
+  /**
+   * Cancels the fade in progress: its pending step never runs and the screen is uncovered (a
+   * following fade covers it again in the same frame, so nothing flickers).
+   */
+  function cancelFade() {
+    window.clearTimeout(fadeTimer);
+    fadeTimer = 0;
+    fadeToken += 1;
+    fade.style.opacity = '0';
+  }
+
+  /**
+   * Fades to dark, runs `step` (the camera jump) and fades back in. A newer view, a new building
+   * or disposal cancels it; a step that is late for any reason still bails out when it is stale.
+   * @param {() => void} step
+   */
+  function fadeThrough(step) {
+    cancelFade();
+    const token = fadeToken;
+    const model = compiled;
+    fade.style.opacity = '1';
+    fadeTimer = window.setTimeout(() => {
+      if (token !== fadeToken || disposed || compiled !== model) return;
+      step();
+      invalidate();
+      fadeTimer = window.setTimeout(() => {
+        fadeTimer = 0;
+        if (token === fadeToken) fade.style.opacity = '0';
+      }, 60);
+    }, FADE_MS);
+  }
+
   /** Applies the current view (after a quality change or a level change). */
   function applyView() {
     if (!compiled) return;
@@ -764,9 +822,10 @@ export function createViewer(container, options = {}) {
     if (!compiled) return false;
     const spec = resolveView(arg);
     if (!spec) return false;
-    if (spec.mode === 'room') {
-      const room = compiled.rooms.get(spec.room);
-      if (!room) return false;
+    const room = spec.mode === 'room' ? compiled.rooms.get(spec.room) : null;
+    if (spec.mode === 'room' ? !room : spec.mode !== 'exterior' && spec.mode !== 'dollhouse') return false;
+    cancelFade();
+    if (room) {
       const { eye, look } = roomEye(room, spec);
       const angles = lookAngles(eye, look);
       const enter = () => {
@@ -788,32 +847,20 @@ export function createViewer(container, options = {}) {
         rig.setRoom({ position: eye, yaw: angles.yaw, pitch: angles.pitch, animate: true });
         return true;
       }
-      fade.style.opacity = '1';
-      window.setTimeout(() => {
-        enter();
-        invalidate();
-        window.setTimeout(() => {
-          fade.style.opacity = '0';
-        }, 60);
-      }, FADE_MS);
+      fadeThrough(enter);
       return true;
     }
-    if (spec.mode !== 'exterior' && spec.mode !== 'dollhouse') return false;
     if (spec.mode === 'dollhouse' && spec.level !== undefined) dollLevel = spec.level;
-    const wasRoom = view.mode === 'room';
+    const wasRoom = view.mode === 'room' || rig.getMode() === 'room';
     view = { mode: spec.mode, level: spec.mode === 'dollhouse' ? dollLevel : null, room: null };
     const frame = orbitFor(spec.mode, spec);
     applyVisibility();
     lightForView();
     if (wasRoom && animate && !instant) {
-      fade.style.opacity = '1';
-      window.setTimeout(() => {
+      fadeThrough(() => {
         rig.setOrbit(spec.mode, { ...frame, animate: false });
         updateCutaway(true);
-        window.setTimeout(() => {
-          fade.style.opacity = '0';
-        }, 60);
-      }, FADE_MS);
+      });
     } else {
       rig.setOrbit(spec.mode, { ...frame, animate: animate && !instant });
     }
@@ -925,6 +972,7 @@ export function createViewer(container, options = {}) {
 
   /** Frees the GPU resources of the current building. */
   function unload() {
+    cancelFade();
     if (!compiled) return;
     scene.remove(compiled.root);
     const geometries = new Set();
@@ -999,9 +1047,10 @@ export function createViewer(container, options = {}) {
       return setView(viewArg, true);
     },
     /**
-     * Turns the camera to face a surface: a room wall or ceiling from inside its room (or across
-     * the dollhouse when that is the current view), an outside wall from the street side. Boundary
-     * wall faces keep the current view.
+     * Turns the camera to face a surface: a room wall from inside its room (or across the dollhouse
+     * when that is the current view), a ceiling by looking up at it from inside its room (the
+     * dollhouse keeps its angle, as ceilings are cut away there), an outside wall from the street
+     * side. Boundary wall faces keep the current view.
      * @param {string} surfaceId
      * @returns {boolean} false when the surface is unknown or the view stays
      */
@@ -1168,6 +1217,7 @@ export function createViewer(container, options = {}) {
     /** Releases the renderer, listeners and GPU resources. */
     dispose() {
       disposed = true;
+      cancelFade();
       cancelAnimationFrame(raf);
       if (interactive) {
         canvas.removeEventListener('pointerdown', onPointerDown);

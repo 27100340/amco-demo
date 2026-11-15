@@ -15,6 +15,8 @@ import { QUALITY } from './quality.js';
  * GTAO that leaves out alpha-tested foliage cards: its normal pass ignores alphaTest, so each card
  * would count as a solid quad and leave a dark or light box around the leaves. Left out, the
  * leaves take the occlusion of whatever is behind them.
+ * Depends on GTAOPass internals (`_overrideVisibility`, `_visibilityCache`) as of the vendored
+ * three 0.187.0: check both still exist when upgrading three.
  */
 class FoliageAwareGTAOPass extends GTAOPass {
   _overrideVisibility() {

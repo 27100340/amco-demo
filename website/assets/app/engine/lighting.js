@@ -308,7 +308,7 @@ export function createLighting(scene, renderer, quality = 'high') {
   /** Lazily builds the sky and room environments for a mode. */
   function envFor(name) {
     if (!skies[name]) skies[name] = buildSky(renderer, pmrem, LIGHT_MODES[name]);
-    if (!rooms[name]) rooms[name] = buildRoom(pmrem, LIGHT_MODES[name].room || ROOM_BOX, LIGHT_MODES[name].interiorTint);
+    if (!rooms[name]) rooms[name] = buildRoom(pmrem, ROOM_BOX, LIGHT_MODES[name].interiorTint);
     return { sky: skies[name], room: rooms[name] };
   }
 
