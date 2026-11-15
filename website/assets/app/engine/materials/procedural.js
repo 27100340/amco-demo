@@ -4,6 +4,7 @@
  * and is generated once per id and size, then cached.
  */
 import * as THREE from 'three';
+import { measureLoad } from '../load-timing.js';
 
 /** Texture ids this module can generate. */
 export const PROCEDURAL_IDS = [
@@ -684,6 +685,7 @@ export function generateTexture(id, size = 512) {
   if (cache.has(key)) return cache.get(key);
   const generator = GENERATORS[id];
   if (!generator) return null;
+  const start = performance.now();
   const { s, tile, strength } = generator(size, random(hash(id)));
   const n = size * size;
   const colour = new Uint8ClampedArray(n * 4);
@@ -709,6 +711,7 @@ export function generateTexture(id, size = 512) {
   };
   result.map.userData.mean = mean;
   cache.set(key, result);
+  measureLoad(`texture:${key}`, start);
   return result;
 }
 

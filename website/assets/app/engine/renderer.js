@@ -10,6 +10,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { QUALITY } from './quality.js';
+import { timeLoad } from './load-timing.js';
 
 /**
  * GTAO that leaves out alpha-tested foliage cards: its normal pass ignores alphaTest, so each card
@@ -43,7 +44,8 @@ const DENOISE_SETTINGS = { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, ra
  * @property {THREE.WebGLRenderer} renderer
  * @property {HTMLCanvasElement} canvas
  * @property {(scene: THREE.Scene, camera: THREE.PerspectiveCamera) => void} attach set what is drawn
- * @property {() => void} render draw one frame
+ * @property {(timed?: boolean) => void} render draw one frame; `timed` records the frame's shadow-map pass
+ *   as `amco:shadow-map` (see load-timing.js)
  * @property {() => Promise<void>} precompile compile every shader of the scene and the post-processing in the
  *   background (in parallel where the browser supports it), for the render target they will draw into
  * @property {(tier: 'high'|'medium'|'low') => void} setQuality switch tier at runtime
@@ -90,7 +92,14 @@ export function createRenderer(container, quality) {
   let height = 1;
   let onScreen = true;
   let pageVisible = document.visibilityState !== 'hidden';
+  let timeShadows = false;
   const listeners = [];
+  const shadowMap = renderer.shadowMap;
+  const renderShadows = shadowMap.render;
+  shadowMap.render = (lights, shadowScene, shadowCamera) => {
+    if (timeShadows && shadowMap.enabled && shadowMap.needsUpdate) timeLoad('shadow-map', () => renderShadows.call(shadowMap, lights, shadowScene, shadowCamera));
+    else renderShadows.call(shadowMap, lights, shadowScene, shadowCamera);
+  };
   const invalidate = () => listeners.forEach((listener) => listener());
 
   /** Pixel ratio for the current tier. */
@@ -177,10 +186,12 @@ export function createRenderer(container, quality) {
       camera.updateProjectionMatrix();
       buildComposer();
     },
-    render() {
+    render(timed = false) {
       if (!scene || !camera) return;
+      timeShadows = timed;
       if (composer) composer.render();
       else renderer.render(scene, camera);
+      timeShadows = false;
     },
     async precompile() {
       if (!scene || !camera) return;

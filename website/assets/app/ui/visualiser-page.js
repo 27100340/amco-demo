@@ -2,10 +2,15 @@
  * Visualiser page: a gallery of showcase properties with kind filters, and the 3D studio below.
  * URL state: `?property=<id>&view=<view>` is read on load and kept up to date with replaceState.
  * `?still=1` hides every control, renders at high quality and sets `window.__amcoReady` once the
- * first full frame is drawn (used by tools/render-stills.mjs); `?light=warm|cool` sets the light.
+ * first full frame is drawn (used by tools/render-stills.mjs); `?light=warm|cool` sets the light;
+ * `?quality=high|medium|low` forces a quality tier instead of the automatic one (used by
+ * tools/load-timing.mjs).
  */
 import { CATALOGUE, findProperty } from '../properties/index.js';
 import { mountStudio } from './studio.js';
+import { markLoad } from '../engine/load-timing.js';
+
+markLoad('page-modules');
 
 const FILTERS = {
   all: () => true,
@@ -26,6 +31,7 @@ function esc(text) {
 
 const params = new URLSearchParams(window.location.search);
 const still = params.get('still') === '1';
+const forcedQuality = ['high', 'medium', 'low'].includes(params.get('quality')) ? params.get('quality') : null;
 const gallery = document.querySelector('[data-gallery]');
 const galleryEmpty = document.querySelector('[data-gallery-empty]');
 const filters = document.querySelector('[data-filters]');
@@ -100,11 +106,12 @@ async function open(entry, view) {
   renderPanelHead(entry);
   writeUrl(view);
   const building = await entry.load();
+  markLoad('property-data');
   if (!studio) {
     studio = mountStudio(studioRoot, {
       building,
       view: view || undefined,
-      quality: still ? 'high' : 'auto',
+      quality: still ? 'high' : forcedQuality || 'auto',
       interactive: !still,
       headerSlot: panelHead,
       onView(next) {

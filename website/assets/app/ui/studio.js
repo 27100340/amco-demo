@@ -6,6 +6,7 @@
 import { createViewer } from '../engine/viewer.js';
 import { createShadePanel } from './shade-panel.js';
 import { amco, data } from '../legacy.js';
+import { markLoad } from '../engine/load-timing.js';
 
 const SCOPES = [['surface', 'This wall'], ['room', 'Whole room'], ['exterior', 'All exterior']];
 const LIGHTS = [['day', 'Daylight'], ['warm', 'Warm bulb'], ['cool', 'Tube light']];
@@ -441,6 +442,7 @@ export function mountStudio(root, options) {
       await viewer.rendered();
       status.hidden = true;
       root.classList.remove('is-loading');
+      markLoad('studio-ready');
     } catch (error) {
       console.error(error);
       status.textContent = error.message || 'This model could not be built.';

@@ -13,6 +13,7 @@ import { compileFloors, floorMaterialId, FLOOR_LIFT } from './floors.js';
 import { compileSlabs } from './roof.js';
 import { compileSite } from './site.js';
 import { prepareShadows } from './openings.js';
+import { timeLoad, measureLoad } from '../load-timing.js';
 
 /** Colour of a paintable surface before any paint is applied. */
 const UNPAINTED = '#efede8';
@@ -116,7 +117,7 @@ export function compileBuilding(building, options) {
   root.name = building.id || 'building';
   const levels = [...(building.levels || [])].sort((a, b) => a.elevation - b.elevation);
   const glassWalls = new Set((building.walls || []).filter((w) => w.role === 'glass').map((w) => w.id));
-  const derived = deriveSurfaces(building);
+  const derived = timeLoad('compile:surfaces', () => deriveSurfaces(building));
   const surfaces = derived.filter((s) => !s.cladding && !(s.wallId && glassWalls.has(s.wallId.replace(/~\d+$/, ''))));
   const surfacesById = new Map(derived.map((s) => [s.id, s]));
   for (const s of derived) {
@@ -163,7 +164,7 @@ export function compileBuilding(building, options) {
     }
   };
 
-  const polygons = roomPolygons(building);
+  const polygons = timeLoad('compile:surfaces', () => roomPolygons(building));
   const levelGroups = new Map();
   const ceilingGroups = [];
   const infos = [];
@@ -173,8 +174,8 @@ export function compileBuilding(building, options) {
     group.userData.level = level.id;
     const walls = nodeWalls((building.walls || []).filter((w) => w.level === level.id));
     const footprints = wallFootprints(walls);
-    group.add(compileWalls(level, index === 0, walls, footprints, ctx));
-    const { floors, ceilings } = compileFloors(building, level, polygons, ctx);
+    group.add(timeLoad('compile:walls', () => compileWalls(level, index === 0, walls, footprints, ctx)));
+    const { floors, ceilings } = timeLoad('compile:floors', () => compileFloors(building, level, polygons, ctx));
     group.add(floors, ceilings);
     ceilingGroups.push(ceilings);
     const top = walls.length ? Math.max(...walls.map((w) => level.elevation + wallTop(w, level))) : level.elevation + level.ceiling;
@@ -183,7 +184,7 @@ export function compileBuilding(building, options) {
     root.add(group);
   });
 
-  const { slabs, roof, parapets } = compileSlabs(building, infos, ctx);
+  const { slabs, roof, parapets } = timeLoad('compile:slabs', () => compileSlabs(building, infos, ctx));
   const blockers = [...slabs.values()];
   if (roof) blockers.push(roof);
   for (const [levelId, group] of slabs) levelGroups.get(levelId).add(group);
@@ -198,6 +199,7 @@ export function compileBuilding(building, options) {
   const fixtures = [];
   const missingKits = new Set();
   const elevation = new Map(levels.map((l) => [l.id, l.elevation]));
+  const kitsStart = performance.now();
   for (const fixture of building.fixtures || []) {
     if (!hasKit(fixture.kit)) {
       missingKits.add(fixture.kit);
@@ -225,6 +227,7 @@ export function compileBuilding(building, options) {
     }
   }
 
+  measureLoad('compile:kits', kitsStart, { count: fixtures.length });
   attachFacadeFixtures(out.wallGroups, fixtures, elevation);
 
   root.updateMatrixWorld(true);
@@ -232,7 +235,7 @@ export function compileBuilding(building, options) {
   for (const group of levelGroups.values()) bounds.expandByObject(group);
   if (bounds.isEmpty()) bounds.set(new THREE.Vector3(-5, 0, -5), new THREE.Vector3(5, 3, 5));
   if (structureBounds.isEmpty()) structureBounds.copy(bounds);
-  const site = compileSite(building, bounds, ctx);
+  const site = timeLoad('compile:site', () => compileSite(building, bounds, ctx));
   root.add(site);
   blockers.push(site, ...out.colliders.map((c) => c.object).filter(Boolean));
   root.updateMatrixWorld(true);

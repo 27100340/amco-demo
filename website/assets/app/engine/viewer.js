@@ -24,6 +24,7 @@ import { estimateLitres } from './estimate.js';
 import { validateBuilding } from '../model/schema.js';
 import { pointInPolygon, polygonCentroid, projectOnSegment, distance } from '../model/geometry.js';
 import { shade, data } from '../legacy.js';
+import { markLoad, measureLoad, timeLoad } from './load-timing.js';
 
 /** Colour of unpainted surfaces. */
 const UNPAINTED = '#efede8';
@@ -150,13 +151,13 @@ export function createViewer(container, options = {}) {
   /** View changes jump instead of flying: reduced motion, or a viewer nobody drives (still renders). */
   const instant = reducedMotion || !interactive;
 
-  const view3d = createRenderer(container, tier);
+  const view3d = timeLoad('renderer', () => createRenderer(container, tier));
   const { renderer, canvas } = view3d;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(ORBIT_FOV, 1, 0.3, 2500);
   camera.position.set(15, 8, 15);
   view3d.attach(scene, camera);
-  const lighting = createLighting(scene, renderer, tier);
+  const lighting = timeLoad('lighting', () => createLighting(scene, renderer, tier));
   renderer.shadowMap.autoUpdate = false;
   setMaterialQuality(tier);
 
@@ -193,6 +194,9 @@ export function createViewer(container, options = {}) {
   let loadToken = 0;
   /** Load token whose shaders are compiling in the background (0 when none); no frame is drawn meanwhile. */
   let compiling = 0;
+  /** Load timing: the next drawn frame is the load's first (`amco:first-render`), then it is on screen (`amco:first-frame`). */
+  let firstFramePending = false;
+  let firstFrameDrawn = false;
   /** Timer of the fade between a room and another view (0 when none), and the token of that fade. */
   let fadeTimer = 0;
   let fadeToken = 0;
@@ -924,6 +928,11 @@ export function createViewer(container, options = {}) {
   const lastMatrix = new THREE.Matrix4();
   function frame(now) {
     raf = requestAnimationFrame(frame);
+    if (firstFrameDrawn) {
+      firstFrameDrawn = false;
+      markLoad('first-frame');
+      markLoad('full-ready');
+    }
     const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
     last = now;
     if (!view3d.isActive()) {
@@ -949,7 +958,13 @@ export function createViewer(container, options = {}) {
       renderedLastFrame = false;
       return;
     }
-    view3d.render();
+    if (firstFramePending) {
+      firstFramePending = false;
+      firstFrameDrawn = true;
+      timeLoad('first-render', () => view3d.render(true));
+    } else {
+      view3d.render();
+    }
     dirty = false;
     if (auto && renderedLastFrame) governor.sample(now - lastRender);
     lastRender = now;
@@ -998,15 +1013,18 @@ export function createViewer(container, options = {}) {
      */
     async load(next, state) {
       const token = ++loadToken;
+      markLoad('load-start', { tier });
       const check = validateBuilding(next);
       if (!check.ok) throw new Error(`This building cannot be shown: ${check.errors.join('; ')}`);
       setMaterialQuality(tier);
+      const warmStart = performance.now();
       await warmMaterials(materialsFor(next));
+      measureLoad('warm-textures', warmStart);
       if (token !== loadToken || disposed) return;
       unload();
       building = next;
       kitCtx.quality = tier;
-      compiled = compileBuilding(next, { quality: tier, mat: getMaterial, kitCtx });
+      compiled = timeLoad('compile', () => compileBuilding(next, { quality: tier, mat: getMaterial, kitCtx }));
       scene.add(compiled.root);
       surfaces = compiled.surfaces;
       surfaceById = new Map(surfaces.map((s) => [s.id, s]));
@@ -1027,16 +1045,20 @@ export function createViewer(container, options = {}) {
         object.visible = true;
         hidden.push(object);
       });
+      const compileStart = performance.now();
       try {
         await view3d.precompile();
       } catch (error) {
         console.error(error);
       }
+      measureLoad('shader-compile', compileStart);
       for (const object of hidden) object.visible = false;
       if (compiling === token) compiling = 0;
       if (token !== loadToken || disposed) return;
       applyVisibility();
+      firstFramePending = true;
       invalidate();
+      markLoad('load-done');
     },
     /**
      * Moves the camera to a view: a building view id, 'exterior', 'dollhouse', 'room:<id>' or a spec.
