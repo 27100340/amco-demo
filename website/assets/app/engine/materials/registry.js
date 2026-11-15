@@ -6,7 +6,7 @@
  * repeats per UV unit; without it, textures are scaled for UVs in metres.
  */
 import * as THREE from 'three';
-import { generateTexture, isGenerated, PROCEDURAL_IDS } from './procedural.js';
+import { generateTexture, reserveTexture, textureCopy } from './procedural.js';
 
 /** Roughness per paint finish. */
 export const FINISH_ROUGHNESS = { matt: 0.92, silk: 0.55, gloss: 0.25 };
@@ -18,6 +18,8 @@ const factories = new Map();
 const cache = new Map();
 const reported = new Set();
 let tier = 'high';
+/** True when new materials may leave their procedural maps blank for later drawing (see setDeferredTextures). */
+let deferTextures = false;
 
 /**
  * Sets the quality tier used to size procedural textures for materials made from now on.
@@ -25,6 +27,27 @@ let tier = 'high';
  */
 export function setMaterialQuality(quality) {
   tier = quality;
+}
+
+/**
+ * Lets materials made from now on leave their procedural maps blank, to be drawn by
+ * `drawPendingTextures` (procedural.js) before they are first rendered. The 3D viewer turns this
+ * on and draws the maps while shaders compile; it is off by default, so other users of the
+ * registry get finished maps.
+ * @param {boolean} on
+ */
+export function setDeferredTextures(on) {
+  deferTextures = on;
+}
+
+/**
+ * The procedural maps for an id at the current tier: finished, or blank for later drawing when
+ * deferred drawing is on.
+ * @param {string} id procedural texture id
+ * @returns {ReturnType<typeof generateTexture>}
+ */
+function mapsFor(id) {
+  return deferTextures ? reserveTexture(id, textureSize(id)) : generateTexture(id, textureSize(id));
 }
 
 /**
@@ -38,19 +61,6 @@ function textureSize(id) {
 }
 
 /**
- * Copies a cached map with its own repeat.
- * @param {THREE.Texture} texture
- * @param {[number, number]} repeat
- * @returns {THREE.Texture}
- */
-function withRepeat(texture, repeat) {
-  const copy = texture.clone();
-  copy.repeat.set(repeat[0], repeat[1]);
-  copy.needsUpdate = true;
-  return copy;
-}
-
-/**
  * A MeshStandardMaterial using the procedural maps of `textureId`.
  * @param {string} textureId procedural id
  * @param {object} base default material parameters
@@ -58,12 +68,12 @@ function withRepeat(texture, repeat) {
  * @returns {THREE.MeshStandardMaterial}
  */
 function textured(textureId, base, opts) {
-  const maps = generateTexture(textureId, textureSize(textureId));
+  const maps = mapsFor(textureId);
   const repeat = Array.isArray(opts.repeat) ? opts.repeat : [1 / maps.tile[0], 1 / maps.tile[1]];
   const { normalScale = 1, ...params } = base;
-  params.map = withRepeat(maps.map, repeat);
-  params.normalMap = withRepeat(maps.normalMap, repeat);
-  params.roughnessMap = withRepeat(maps.roughnessMap, repeat);
+  params.map = textureCopy(maps.map, repeat);
+  params.normalMap = textureCopy(maps.normalMap, repeat);
+  params.roughnessMap = textureCopy(maps.roughnessMap, repeat);
   const material = new THREE.MeshStandardMaterial(params);
   material.normalScale.set(normalScale, normalScale);
   return material;
@@ -102,12 +112,12 @@ export function registerMaterial(id, factory) {
  * @returns {THREE.MeshStandardMaterial}
  */
 export function createPaintMaterial(hex, finish = 'matt') {
-  const maps = generateTexture('plaster', textureSize('plaster'));
+  const maps = mapsFor('plaster');
   const material = new THREE.MeshStandardMaterial({
     color: new THREE.Color(hex),
     roughness: FINISH_ROUGHNESS[finish] ?? FINISH_ROUGHNESS.matt,
     metalness: 0,
-    normalMap: withRepeat(maps.normalMap, [1 / maps.tile[0], 1 / maps.tile[1]])
+    normalMap: textureCopy(maps.normalMap, [1 / maps.tile[0], 1 / maps.tile[1]])
   });
   material.normalScale.set(0.12, 0.12);
   material.userData.paint = true;
@@ -140,22 +150,6 @@ export function getMaterial(id, opts = {}) {
   material.name = material.name || id;
   cache.set(key, material);
   return material;
-}
-
-/**
- * Generates the procedural maps for the given ids ahead of time, yielding between maps so the
- * page stays responsive.
- * @param {string[]} ids material ids that will be needed
- * @returns {Promise<void>}
- */
-export async function warmMaterials(ids) {
-  const aliases = { road: 'asphalt', render: 'plaster', paint: 'plaster' };
-  const wanted = [...new Set(ids.map((id) => aliases[id] || id))].filter((id) => PROCEDURAL_IDS.includes(id));
-  for (const id of wanted) {
-    if (isGenerated(id, textureSize(id))) continue;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    generateTexture(id, textureSize(id));
-  }
 }
 
 /* ------------------------------------------------------------ built-in ids */

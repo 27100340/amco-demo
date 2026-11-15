@@ -4,8 +4,9 @@
  */
 import * as THREE from 'three';
 import '../kits/all.js';
-import { hasKit, buildKit } from '../kits/index.js';
-import { nodeWalls, wallFootprints, findRoomFaces } from '../../model/geometry.js';
+import { hasKit, createKitBuilder } from '../kits/index.js';
+import { KIT_FAMILIES } from '../kits/ids.js';
+import { nodeWalls, wallFootprints, findRoomFaces, pointInPolygon } from '../../model/geometry.js';
 import { deriveSurfaces, roomPolygons } from '../../model/surfaces.js';
 import { createPaintMaterial } from '../materials/registry.js';
 import { compileWalls, wallTop } from './walls.js';
@@ -25,6 +26,87 @@ const CANOPY_DEPTH = 1.8;
 const CANOPY_MIN_HEIGHT = 1.8;
 /** Inside: wall-hung fixtures (curtains, art, mirrors, AC units) reaching this far into the room (m). */
 const HUNG_DEPTH = 0.35;
+/** Room uses open to the outside: their fixtures show from the street, so they are never left for later. */
+const OPEN_AIR_USES = new Set(['porch', 'balcony']);
+/** Kits of the outside (façade, roof and site pieces), never left for later wherever they stand. Stairs and indoor AC units are furniture. */
+const OUTDOOR_KITS = new Set(KIT_FAMILIES.exterior.filter((id) => !['stair.dogleg', 'stair.straight', 'ac.split'].includes(id)));
+/** Fixtures shorter than this (m) do not block walking. */
+const COLLIDER_MIN_HEIGHT = 0.25;
+
+/**
+ * Splits fixtures into those the opening view needs at once and those that can stream in after
+ * the first frame: furniture inside enclosed rooms waits, except in the room the view opens in.
+ * Fixtures outside, on porches and balconies, and outdoor kits anywhere (canopies, louvres, roof
+ * tanks, outdoor AC units) come at once.
+ * @param {object[]} list the building's fixtures
+ * @param {Map<string, { id: string, level: string, use?: string, polygon: number[][] }>} rooms compiled rooms
+ * @param {{ mode: string, room?: string }|null} opening opening view; null builds everything at once
+ * @returns {{ now: object[], later: object[] }}
+ */
+export function splitFixtures(list, rooms, opening) {
+  if (!opening) return { now: list, later: [] };
+  const now = [];
+  const later = [];
+  for (const fixture of list) {
+    if (OUTDOOR_KITS.has(fixture.kit)) {
+      now.push(fixture);
+      continue;
+    }
+    let room = null;
+    for (const candidate of rooms.values()) {
+      if (candidate.level === fixture.level && Array.isArray(fixture.at) && pointInPolygon(fixture.at, candidate.polygon)) {
+        room = candidate;
+        break;
+      }
+    }
+    const waits = room && !OPEN_AIR_USES.has(room.use) && !(opening.mode === 'room' && opening.room === room.id);
+    (waits ? later : now).push(fixture);
+  }
+  return { now, later };
+}
+
+/**
+ * Builds one fixture's kit and puts it in place on its level, without adding it to the model.
+ * @param {object} fixture Building Model fixture
+ * @param {{ buildKit: Function, elevation: Map<string, number>, levelGroups: Map<string, THREE.Group>, root: THREE.Group }} placement
+ * @returns {{ object: THREE.Object3D, parent: THREE.Object3D, level: string, box: THREE.Box3 }|null} null when the kit fails
+ */
+function buildFixture(fixture, placement) {
+  let object;
+  try {
+    object = placement.buildKit(fixture.kit, fixture.params || {});
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+  object.position.set(fixture.at[0], (placement.elevation.get(fixture.level) ?? 0) + FLOOR_LIFT, -fixture.at[1]);
+  object.rotation.y = THREE.MathUtils.degToRad(-(fixture.rotation || 0));
+  object.name = object.name || `fixture-${fixture.kit}`;
+  object.userData.fixture = fixture.kit;
+  prepareShadows(object);
+  object.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(object);
+  return { object, parent: placement.levelGroups.get(fixture.level) || placement.root, level: fixture.level, box };
+}
+
+/**
+ * Adds built fixtures to the scene graph and records their bounds, colliders and pick blockers.
+ * Level groups have no transform of their own, so the bounds from `buildFixture` are world bounds.
+ * @param {ReturnType<typeof buildFixture>[]} built
+ * @param {{ fixtures: object[], colliders: object[], blockers: THREE.Object3D[] }} into lists to extend
+ */
+function placeFixtures(built, into) {
+  for (const item of built) {
+    item.parent.add(item.object);
+    const { box } = item;
+    if (box.isEmpty()) continue;
+    into.fixtures.push({ object: item.object, level: item.level, box });
+    if (box.max.y - box.min.y > COLLIDER_MIN_HEIGHT) {
+      into.colliders.push({ level: item.level, box: new THREE.Box2(new THREE.Vector2(box.min.x, box.min.z), new THREE.Vector2(box.max.x, box.max.z)), object: item.object });
+      into.blockers.push(item.object);
+    }
+  }
+}
 
 /**
  * Links fixtures that hang on a façade to that wall, so the dollhouse cuts them away together
@@ -104,12 +186,19 @@ function attachFacadeFixtures(wallGroups, fixtures, elevation) {
  * @property {{ object: THREE.Object3D, level: string, box: THREE.Box3 }[]} fixtures placed fixtures with world bounds
  * @property {THREE.Object3D[]} blockers solid objects that stop a pick reaching a wall behind them
  * @property {string[]} missingKits fixture kits that are not registered
+ * @property {object[]} pendingFixtures fixtures left for later (see `compileBuilding`'s `opening`); build them
+ *   with `buildPendingFixture` and add them with `addPendingFixtures`
+ * @property {object} placement what later fixture builds need (kit builder, levels); internal
  */
 
 /**
- * Compiles a building.
+ * Compiles a building. With `opening`, furniture in enclosed rooms the opening view does not show
+ * is left in `pendingFixtures`, to stream in after the first frame; without it, everything is built.
+ * `onShell` is called with the root once walls, floors, slabs and roof exist (before fixtures and
+ * the site), so their shaders can start compiling while the rest is built.
  * @param {import('../../model/schema.js').Building} building
- * @param {{ quality: 'high'|'medium'|'low', mat: Function, kitCtx: object }} options
+ * @param {{ quality: 'high'|'medium'|'low', mat: Function, kitCtx: object, opening?: { mode: string, room?: string }|null,
+ *   onShell?: (root: THREE.Group) => void }} options
  * @returns {CompiledBuilding}
  */
 export function compileBuilding(building, options) {
@@ -144,6 +233,7 @@ export function compileBuilding(building, options) {
     quality: options.quality,
     mat: options.mat,
     kitCtx: options.kitCtx,
+    buildKit: createKitBuilder(options.kitCtx),
     surfacesById,
     surfaceList: surfaces,
     out,
@@ -192,42 +282,20 @@ export function compileBuilding(building, options) {
   surfaces.push(...parapets);
 
   root.updateMatrixWorld(true);
+  if (options.onShell) options.onShell(root);
   const structureBounds = new THREE.Box3();
   for (const group of levelGroups.values()) structureBounds.expandByObject(group);
   const levelTops = new Map(infos.map((info) => [info.level.id, info.top]));
 
   const fixtures = [];
-  const missingKits = new Set();
   const elevation = new Map(levels.map((l) => [l.id, l.elevation]));
+  const placement = { buildKit: ctx.buildKit, elevation, levelGroups, root, wallGroups: out.wallGroups };
+  const known = (building.fixtures || []).filter((fixture) => hasKit(fixture.kit));
+  const missingKits = new Set((building.fixtures || []).filter((fixture) => !hasKit(fixture.kit)).map((fixture) => fixture.kit));
+  const { now, later } = splitFixtures(known, out.rooms, options.opening || null);
   const kitsStart = performance.now();
-  for (const fixture of building.fixtures || []) {
-    if (!hasKit(fixture.kit)) {
-      missingKits.add(fixture.kit);
-      continue;
-    }
-    let object;
-    try {
-      object = buildKit(fixture.kit, fixture.params || {}, ctx.kitCtx);
-    } catch (error) {
-      console.error(error);
-      continue;
-    }
-    object.position.set(fixture.at[0], (elevation.get(fixture.level) ?? 0) + FLOOR_LIFT, -fixture.at[1]);
-    object.rotation.y = THREE.MathUtils.degToRad(-(fixture.rotation || 0));
-    object.name = object.name || `fixture-${fixture.kit}`;
-    object.userData.fixture = fixture.kit;
-    prepareShadows(object);
-    const parent = levelGroups.get(fixture.level) || root;
-    parent.add(object);
-    object.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(object);
-    if (!box.isEmpty()) fixtures.push({ object, level: fixture.level, box });
-    if (!box.isEmpty() && box.max.y - box.min.y > 0.25) {
-      out.colliders.push({ level: fixture.level, box: new THREE.Box2(new THREE.Vector2(box.min.x, box.min.z), new THREE.Vector2(box.max.x, box.max.z)), object });
-    }
-  }
-
-  measureLoad('compile:kits', kitsStart, { count: fixtures.length });
+  placeFixtures(now.map((fixture) => buildFixture(fixture, placement)).filter(Boolean), { fixtures, colliders: out.colliders, blockers });
+  measureLoad('compile:kits', kitsStart, { count: now.length, later: later.length });
   attachFacadeFixtures(out.wallGroups, fixtures, elevation);
 
   root.updateMatrixWorld(true);
@@ -237,7 +305,7 @@ export function compileBuilding(building, options) {
   if (structureBounds.isEmpty()) structureBounds.copy(bounds);
   const site = timeLoad('compile:site', () => compileSite(building, bounds, ctx));
   root.add(site);
-  blockers.push(site, ...out.colliders.map((c) => c.object).filter(Boolean));
+  blockers.push(site);
   root.updateMatrixWorld(true);
   const siteBounds = bounds.clone();
   if (building.site && Array.isArray(building.site.boundary)) {
@@ -269,23 +337,35 @@ export function compileBuilding(building, options) {
     levelTops,
     fixtures,
     blockers,
-    missingKits: [...missingKits]
+    missingKits: [...missingKits],
+    pendingFixtures: later,
+    placement
   };
 }
 
 /**
- * Material ids a building is likely to need, so their textures can be generated up front.
- * @param {import('../../model/schema.js').Building} building
- * @returns {string[]}
+ * Builds one fixture from `compiled.pendingFixtures`, ready to add with `addPendingFixtures`.
+ * @param {CompiledBuilding} compiled
+ * @param {object} fixture
+ * @returns {object|null} the built fixture, or null when its kit fails
  */
-export function materialsFor(building) {
-  const ids = new Set(['plaster', 'render', 'concrete', 'lawn', 'marble', 'walnut', 'paving']);
-  for (const room of building.rooms || []) ids.add(floorMaterialId(room));
-  for (const wall of building.walls || []) {
-    if (wall.cladding && wall.cladding.left) ids.add(wall.cladding.left);
-    if (wall.cladding && wall.cladding.right) ids.add(wall.cladding.right);
+export function buildPendingFixture(compiled, fixture) {
+  return buildFixture(fixture, compiled.placement);
+}
+
+/**
+ * Adds fixtures built with `buildPendingFixture` to the compiled building: the scene graph, the
+ * fixture list, colliders, pick blockers, the façades they hang on and the bounds.
+ * @param {CompiledBuilding} compiled
+ * @param {object[]} built
+ */
+export function addPendingFixtures(compiled, built) {
+  placeFixtures(built, compiled);
+  attachFacadeFixtures(compiled.placement.wallGroups, compiled.fixtures, compiled.placement.elevation);
+  for (const item of built) {
+    if (item.box.isEmpty()) continue;
+    compiled.bounds.union(item.box);
+    compiled.siteBounds.union(item.box);
   }
-  for (const patch of (building.site && building.site.ground) || []) ids.add(patch.material === 'road' ? 'asphalt' : patch.material);
-  if (building.site && building.site.street) ids.add('asphalt');
-  return [...ids];
+  compiled.root.updateMatrixWorld(true);
 }

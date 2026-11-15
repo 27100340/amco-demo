@@ -12,7 +12,8 @@
  *           step: module load, property data, renderer and lighting set-up, procedural textures,
  *           building compile (walls, floors, slabs, kits, site; textures made inside each step are
  *           counted under textures), shader compile, the first frame's shadow map, the first frame
- *           on screen, and full ready (deferred work done). `--tier auto` lets the engine choose.
+ *           on screen, furniture streamed in after it, and full ready (all background work done).
+ *           `--tier auto` lets the engine choose.
  *   sample  my-property.html: Load the sample project, Build, then Paint in 3D, timed to the first
  *           frame of the 3D step (quality chosen by the engine).
  *   switch  tools/dev/engine.html with the studio: as soon as the model is shown, switches to the
@@ -249,6 +250,7 @@ function summarise(data, origin = 0) {
     firstRender: total('first-render'),
     firstFrame: mark('first-frame'),
     studioReady: mark('studio-ready'),
+    streamed: total('stream-fixtures'),
     fullReady
   };
 }
@@ -284,7 +286,7 @@ const LOAD_COLUMNS = [
   ['tier', 'tier'], ['modules', 'modules'], ['propertyData', 'property data'], ['renderer', 'renderer'], ['lighting', 'lighting'],
   ['textures', 'textures'], ['compile', 'compile'], ['walls', 'walls'], ['floors', 'floors'], ['slabs', 'slabs'], ['kits', 'kits'],
   ['site', 'site'], ['shaderCompile', 'shader compile'], ['shadowMap', 'shadow map (CPU)'], ['firstRender', 'first render (CPU)'],
-  ['firstFrame', 'first frame'], ['fullReady', 'full ready']
+  ['firstFrame', 'first frame'], ['streamed', 'furniture streaming (after)'], ['fullReady', 'full ready']
 ];
 
 /**

@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import { wallFootprints, sub, add, scale, normalize, leftNormal, distance, polygonArea, projectOnSegment } from '../../model/geometry.js';
-import { hasKit, buildKit } from '../kits/index.js';
+import { hasKit } from '../kits/index.js';
 import { QuadBuilder, addFace, extrudePolygons, toWorld, planDir, mesh, GROUND_Y } from './mesh-utils.js';
 import { prepareShadows } from './openings.js';
 
@@ -163,7 +163,7 @@ function buildBoundary(site, ctx, group) {
     const style = gate.style || 'gate.sliding';
     if (hasKit(style)) {
       try {
-        object = buildKit(style, params, ctx.kitCtx);
+        object = ctx.buildKit(style, params);
       } catch (error) {
         console.error(error);
       }

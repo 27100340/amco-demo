@@ -1,10 +1,12 @@
 /**
- * Procedural PBR textures drawn on canvas: colour, normal (from a height field via a Sobel filter)
+ * Procedural PBR textures computed in memory: colour, normal (from a height field via a Sobel filter)
  * and roughness. Every pattern tiles seamlessly, covers a known real-world size (`tile`, metres)
- * and is generated once per id and size, then cached.
+ * and is generated once per id and size, then cached. A set can be reserved first (blank maps,
+ * so materials and shaders can be made at once) and drawn later, while shaders compile.
  */
 import * as THREE from 'three';
 import { measureLoad } from '../load-timing.js';
+import { runSliced } from '../load-scheduler.js';
 
 /** Texture ids this module can generate. */
 export const PROCEDURAL_IDS = [
@@ -12,7 +14,12 @@ export const PROCEDURAL_IDS = [
   'fabric-linen', 'leather', 'lawn', 'paving', 'asphalt', 'gravel', 'brushed-steel', 'carpet-tile'
 ];
 
+/** Texture sets by `<id>@<size>`; keys of the sets whose maps are still blank; copies made of each map. */
 const cache = new Map();
+const blank = new Set();
+const copies = new WeakMap();
+/** Pixel size of the generator run that only reads a pattern's tile size. */
+const TILE_PROBE_SIZE = 8;
 
 /**
  * Seeded pseudo-random generator (mulberry32).
@@ -642,23 +649,37 @@ function normalsFromHeight(height, size, strength) {
 }
 
 /**
- * Wraps RGBA bytes in a repeating CanvasTexture.
- * @param {Uint8ClampedArray} bytes
+ * A repeating, mipmapped RGBA texture of `size` pixels, blank (never uploaded) until its pixels
+ * are drawn. The pixels are uploaded straight from memory, which is several times quicker than
+ * from a canvas; rows are stored bottom first, as a canvas upload would flip them.
  * @param {number} size
  * @param {boolean} srgb true for colour maps
- * @returns {THREE.CanvasTexture}
+ * @returns {THREE.DataTexture}
  */
-function toTexture(bytes, size, srgb) {
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  canvas.getContext('2d').putImageData(new ImageData(bytes, size, size), 0, 0);
-  const texture = new THREE.CanvasTexture(canvas);
+function blankTexture(size, srgb) {
+  const texture = new THREE.DataTexture(null, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.unpackAlignment = 4;
   texture.anisotropy = 8;
   if (srgb) texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
+}
+
+/**
+ * Rows of RGBA pixels in reverse order (bottom row first), as WebGL expects texture data.
+ * @param {Uint8ClampedArray} bytes size×size RGBA, top row first
+ * @param {number} size
+ * @returns {Uint8Array}
+ */
+function bottomUp(bytes, size) {
+  const out = new Uint8Array(bytes.length);
+  const row = size * 4;
+  for (let y = 0; y < size; y++) out.set(bytes.subarray(y * row, (y + 1) * row), (size - 1 - y) * row);
+  return out;
 }
 
 /**
@@ -673,20 +694,26 @@ function hash(text) {
 }
 
 /**
- * Generates (or returns the cached) PBR maps for a procedural id.
- * @param {string} id one of PROCEDURAL_IDS
- * @param {number} [size=512] pixels per side (512 or 1024)
- * @returns {{ map: THREE.CanvasTexture, normalMap: THREE.CanvasTexture, roughnessMap: THREE.CanvasTexture, tile: [number, number] } | null}
- *   `tile` is the real-world size (metres) one repeat covers; `map.userData.mean` is the average
- *   sRGB colour (0..1 channels); null for unknown ids
+ * Real-world size (metres) one repeat of an id's pattern covers. It does not depend on the
+ * pixel size, so a tiny run of the generator gives it.
+ * @param {string} id
+ * @returns {[number, number]}
  */
-export function generateTexture(id, size = 512) {
-  const key = `${id}@${size}`;
-  if (cache.has(key)) return cache.get(key);
-  const generator = GENERATORS[id];
-  if (!generator) return null;
+function tileOf(id) {
+  return GENERATORS[id](TILE_PROBE_SIZE, random(hash(id))).tile;
+}
+
+/**
+ * Draws a texture set's maps (computes their pixels) and flags them, and every copy made with
+ * `textureCopy`, for upload.
+ * @param {string} key cache key `<id>@<size>`
+ */
+function draw(key) {
+  const set = cache.get(key);
+  const [id, sizeText] = key.split('@');
+  const size = Number(sizeText);
   const start = performance.now();
-  const { s, tile, strength } = generator(size, random(hash(id)));
+  const { s, strength } = GENERATORS[id](size, random(hash(id)));
   const n = size * size;
   const colour = new Uint8ClampedArray(n * 4);
   const rough = new Uint8ClampedArray(n * 4);
@@ -703,24 +730,79 @@ export function generateTexture(id, size = 512) {
     rough[i * 4 + 2] = r;
     rough[i * 4 + 3] = 255;
   }
-  const result = {
-    map: toTexture(colour, size, true),
-    normalMap: toTexture(normalsFromHeight(s.height, size, strength), size, false),
-    roughnessMap: toTexture(rough, size, false),
-    tile
-  };
-  result.map.userData.mean = mean;
-  cache.set(key, result);
+  const maps = [[set.map, colour], [set.normalMap, normalsFromHeight(s.height, size, strength)], [set.roughnessMap, rough]];
+  for (const [texture, bytes] of maps) {
+    texture.image.data = bottomUp(bytes, size);
+    for (const flagged of [texture, ...(copies.get(texture) || [])]) flagged.needsUpdate = true;
+  }
+  set.map.userData.mean = mean;
+  blank.delete(key);
   measureLoad(`texture:${key}`, start);
-  return result;
 }
 
 /**
- * Whether the maps for an id and size are already generated.
- * @param {string} id
- * @param {number} size
+ * The PBR maps for a procedural id, cached per id and size. When new, the maps are blank until
+ * drawn: by `generateTexture`, or in the background by `drawPendingTextures`. Use it to make
+ * materials ahead of the pixels (shaders do not need them), and draw before the first render.
+ * @param {string} id one of PROCEDURAL_IDS
+ * @param {number} [size=512] pixels per side (256, 512 or 1024)
+ * @returns {{ map: THREE.DataTexture, normalMap: THREE.DataTexture, roughnessMap: THREE.DataTexture, tile: [number, number] } | null}
+ *   `tile` is the real-world size (metres) one repeat covers; once drawn, `map.userData.mean` is the
+ *   average sRGB colour (0..1 channels); null for unknown ids
+ */
+export function reserveTexture(id, size = 512) {
+  const key = `${id}@${size}`;
+  if (cache.has(key)) return cache.get(key);
+  if (!GENERATORS[id]) return null;
+  cache.set(key, { map: blankTexture(size, true), normalMap: blankTexture(size, false), roughnessMap: blankTexture(size, false), tile: tileOf(id) });
+  blank.add(key);
+  return cache.get(key);
+}
+
+/**
+ * Generates (or returns the cached) PBR maps for a procedural id, drawn.
+ * @param {string} id one of PROCEDURAL_IDS
+ * @param {number} [size=512] pixels per side (256, 512 or 1024)
+ * @returns {ReturnType<typeof reserveTexture>} see `reserveTexture`; null for unknown ids
+ */
+export function generateTexture(id, size = 512) {
+  const set = reserveTexture(id, size);
+  if (set && blank.has(`${id}@${size}`)) draw(`${id}@${size}`);
+  return set;
+}
+
+/**
+ * A copy of one of the maps with its own repeat (materials scale the same pixels differently).
+ * Copies of a map that is still blank are flagged for upload when it is drawn.
+ * @param {THREE.Texture} texture a map from `reserveTexture` or `generateTexture`
+ * @param {[number, number]} repeat
+ * @returns {THREE.Texture}
+ */
+export function textureCopy(texture, repeat) {
+  const copy = texture.clone();
+  copy.repeat.set(repeat[0], repeat[1]);
+  copy.needsUpdate = true;
+  if (!copies.has(texture)) copies.set(texture, []);
+  copies.get(texture).push(copy);
+  return copy;
+}
+
+/**
+ * Whether any reserved texture is still blank.
  * @returns {boolean}
  */
-export function isGenerated(id, size) {
-  return cache.has(`${id}@${size}`);
+export function hasPendingTextures() {
+  return blank.size > 0;
+}
+
+/**
+ * Draws every texture that is still blank, one per slice so the page stays responsive.
+ * @param {{ cancelled?: () => boolean }} [options] stops early when `cancelled()` turns true
+ * @returns {Promise<boolean>} true when none is left blank
+ */
+export async function drawPendingTextures(options = {}) {
+  await runSliced([...blank], (key) => {
+    if (blank.has(key)) draw(key);
+  }, { cancelled: options.cancelled, budgetMs: 0 });
+  return blank.size === 0;
 }

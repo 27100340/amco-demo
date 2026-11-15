@@ -38,6 +38,8 @@ class FoliageAwareGTAOPass extends GTAOPass {
 const AO_SETTINGS = { radius: 0.35, distanceExponent: 1.2, thickness: 0.6, distanceFallOff: 1, scale: 1, samples: 16, screenSpaceRadius: false };
 const AO_BLEND = 0.9;
 const DENOISE_SETTINGS = { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, radiusExponent: 1, samples: 16 };
+/** Height (m) the camera moves to for `warmUp`, far below the model, so its view holds nothing to draw. */
+const WARM_UP_DEPTH = -1e5;
 
 /**
  * @typedef {object} EngineRenderer
@@ -46,8 +48,17 @@ const DENOISE_SETTINGS = { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, ra
  * @property {(scene: THREE.Scene, camera: THREE.PerspectiveCamera) => void} attach set what is drawn
  * @property {(timed?: boolean) => void} render draw one frame; `timed` records the frame's shadow-map pass
  *   as `amco:shadow-map` (see load-timing.js)
- * @property {() => Promise<void>} precompile compile every shader of the scene and the post-processing in the
- *   background (in parallel where the browser supports it), for the render target they will draw into
+ * @property {(root?: THREE.Object3D) => Promise<void>} compile compiles, in the background (in parallel where the
+ *   browser supports it), the shaders of what is visible in `root` (the scene by default; a group not yet in the
+ *   scene is compiled for it), for the render target the scene draws into. Only the synchronous start happens
+ *   during the call, so callers may show hidden objects around it. Resolves when the shaders are ready.
+ * @property {() => Promise<void>} compilePasses compiles the post-processing shaders in the background, each for
+ *   the render target it draws into
+ * @property {(root?: THREE.Object3D) => void} uploadTextures sends the textures of what is visible in `root` (the
+ *   scene by default) to the GPU now, so the first frame that shows them does not wait for the uploads
+ * @property {() => void} warmUp draws the sun's shadow map and the sky background once, with the camera looking at
+ *   nothing and (on screen) into a single pixel, so their shaders, which only compile when first drawn, compile
+ *   now rather than in the first real frame; the shadow map stays valid for that frame
  * @property {(tier: 'high'|'medium'|'low') => void} setQuality switch tier at runtime
  * @property {() => 'high'|'medium'|'low'} getQuality current tier
  * @property {() => boolean} isActive false while off-screen or the tab is hidden
@@ -193,24 +204,67 @@ export function createRenderer(container, quality) {
       else renderer.render(scene, camera);
       timeShadows = false;
     },
-    async precompile() {
-      if (!scene || !camera) return;
-      const jobs = [];
+    compile(root = scene) {
+      if (!scene || !camera) return Promise.resolve();
       const previous = renderer.getRenderTarget();
       renderer.setRenderTarget(composer ? composer.readBuffer : null);
-      jobs.push(renderer.compileAsync(scene, camera));
+      const ready = renderer.compileAsync(root, camera, root === scene ? null : scene);
       renderer.setRenderTarget(previous);
-      const quad = new THREE.PlaneGeometry(2, 2);
-      if (composer) {
-        const materials = new Set();
-        for (const pass of composer.passes) {
-          for (const value of Object.values(pass)) {
-            if (value && value.isShaderMaterial) materials.add(value);
+      return ready.then(() => {});
+    },
+    warmUp() {
+      if (!scene || !camera) return;
+      const position = camera.position.clone();
+      const previous = renderer.getRenderTarget();
+      camera.position.set(0, WARM_UP_DEPTH, 0);
+      camera.updateMatrixWorld();
+      renderer.setRenderTarget(composer ? composer.readBuffer : null);
+      if (!composer) {
+        renderer.setScissor(0, 0, 1, 1);
+        renderer.setScissorTest(true);
+      }
+      renderer.render(scene, camera);
+      renderer.setScissorTest(false);
+      renderer.setRenderTarget(previous);
+      camera.position.copy(position);
+      camera.updateMatrixWorld();
+    },
+    uploadTextures(root = scene) {
+      if (!root) return;
+      const sources = new Set();
+      root.traverseVisible((object) => {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if (!material) continue;
+          for (const value of Object.values(material)) {
+            if (!value || !value.isTexture || value.version === 0 || sources.has(value.source)) continue;
+            sources.add(value.source);
+            renderer.initTexture(value);
           }
         }
-        const view = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-        for (const material of materials) jobs.push(renderer.compileAsync(new THREE.Mesh(quad, material), view));
+      });
+    },
+    async compilePasses() {
+      if (!composer) return;
+      const quad = new THREE.PlaneGeometry(2, 2);
+      const view = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      const previous = renderer.getRenderTarget();
+      const jobs = [];
+      const compileFor = (material, target, mesh = new THREE.Mesh(quad, material)) => {
+        renderer.setRenderTarget(target);
+        jobs.push(renderer.compileAsync(mesh, view));
+      };
+      for (const pass of composer.passes) {
+        const target = pass.renderToScreen ? null : composer.writeBuffer;
+        for (const value of Object.values(pass)) {
+          if (value && value.isShaderMaterial) compileFor(value, target);
+        }
       }
+      if (gtao) {
+        compileFor(gtao.normalMaterial, gtao.normalRenderTarget);
+        compileFor(gtao.normalMaterial, gtao.normalRenderTarget, new THREE.InstancedMesh(quad, gtao.normalMaterial, 1));
+      }
+      renderer.setRenderTarget(previous);
       await Promise.all(jobs);
       quad.dispose();
     },

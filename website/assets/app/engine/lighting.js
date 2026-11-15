@@ -261,8 +261,11 @@ function buildRoom(pmrem, box, tint) {
  *   setLamps: (lamps: RoomLamp[]) => void,
  *   setActiveRoom: (roomId: string|null) => void,
  *   setQuality: (tier: 'high'|'medium'|'low') => void,
+ *   prepare: () => void,
  *   dispose: () => void
  * }}
+ *   The interior light box of a mode is built the first time an interior view needs it, or ahead
+ *   of time by `prepare()` (the viewer calls it after the first frame).
  */
 export function createLighting(scene, renderer, quality = 'high') {
   RectAreaLightUniformsLib.init();
@@ -305,11 +308,16 @@ export function createLighting(scene, renderer, quality = 'high') {
 
   scene.fog = new THREE.Fog('#c9d6e2', 1500, 3000);
 
-  /** Lazily builds the sky and room environments for a mode. */
-  function envFor(name) {
+  /** The sky (background and outdoor light) of a mode, built on first use. */
+  function skyFor(name) {
     if (!skies[name]) skies[name] = buildSky(renderer, pmrem, LIGHT_MODES[name]);
+    return skies[name];
+  }
+
+  /** The interior light box of a mode, built on first use. */
+  function roomFor(name) {
     if (!rooms[name]) rooms[name] = buildRoom(pmrem, ROOM_BOX, LIGHT_MODES[name].interiorTint);
-    return { sky: skies[name], room: rooms[name] };
+    return rooms[name];
   }
 
   /**
@@ -386,10 +394,10 @@ export function createLighting(scene, renderer, quality = 'high') {
   /** Applies environment, sun and exposure for the current mode and context. */
   function apply() {
     const settings = LIGHT_MODES[mode];
-    const env = envFor(mode);
-    scene.background = env.sky.background;
+    const sky = skyFor(mode);
+    scene.background = sky.background;
     scene.backgroundIntensity = settings.background;
-    scene.environment = context === 'interior' ? env.room.texture : env.sky.environment;
+    scene.environment = context === 'interior' ? roomFor(mode).texture : sky.environment;
     scene.environmentIntensity = context === 'interior' ? settings.interiorEnv : settings.exteriorEnv;
     renderer.toneMappingExposure = settings.exposure;
     sun.color.set(settings.sun.color);
@@ -481,6 +489,9 @@ export function createLighting(scene, renderer, quality = 'high') {
       });
       fitSun(lastBounds);
       apply();
+    },
+    prepare() {
+      roomFor(mode);
     },
     dispose() {
       Object.values(skies).forEach((s) => s.dispose());

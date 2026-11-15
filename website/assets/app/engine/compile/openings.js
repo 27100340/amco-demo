@@ -9,7 +9,7 @@
  */
 import * as THREE from 'three';
 import { add, scale } from '../../model/geometry.js';
-import { hasKit, buildKit } from '../kits/index.js';
+import { hasKit } from '../kits/index.js';
 import { toWorld, planDir } from './mesh-utils.js';
 
 /** Frame profile (m). */
@@ -163,7 +163,7 @@ export function buildOpening(wall, opening, info, ctx) {
   const params = { width, height, thickness: wall.thickness, role: wall.role || 'interior', type: opening.type, sill, exterior };
   if (style && hasKit(style)) {
     try {
-      object = buildKit(style, params, ctx.kitCtx);
+      object = ctx.buildKit(style, params);
     } catch (error) {
       console.error(error);
       object = null;

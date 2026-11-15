@@ -14,8 +14,10 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { createRenderer } from './renderer.js';
 import { pickQuality, createFrameGovernor, lowerTier, QUALITY } from './quality.js';
 import { createLighting } from './lighting.js';
-import { getMaterial, setMaterialQuality, warmMaterials } from './materials/registry.js';
-import { compileBuilding, materialsFor } from './compile/building.js';
+import { getMaterial, setMaterialQuality, setDeferredTextures } from './materials/registry.js';
+import { drawPendingTextures } from './materials/procedural.js';
+import { compileBuilding, buildPendingFixture, addPendingFixtures } from './compile/building.js';
+import { runSliced, yieldToBrowser } from './load-scheduler.js';
 import { createCameraRig, EYE_HEIGHT, lookAngles } from './cameras.js';
 import { createPicker, isShown } from './picking.js';
 import { createPaintAnimator } from './paint.js';
@@ -160,6 +162,7 @@ export function createViewer(container, options = {}) {
   const lighting = timeLoad('lighting', () => createLighting(scene, renderer, tier));
   renderer.shadowMap.autoUpdate = false;
   setMaterialQuality(tier);
+  setDeferredTextures(true);
 
   canvas.tabIndex = 0;
   canvas.setAttribute('role', 'application');
@@ -169,10 +172,20 @@ export function createViewer(container, options = {}) {
   Object.assign(fade.style, { position: 'absolute', inset: '0', background: '#101214', opacity: '0', pointerEvents: 'none', transition: reducedMotion ? 'none' : `opacity ${FADE_MS}ms ease` });
   container.appendChild(fade);
 
+  /**
+   * Rounded boxes made during the current load, by size: kits and openings ask for the same boxes
+   * over and over, and a copy costs far less than a new one. Emptied once the load is complete.
+   */
+  let roundedBoxes = new Map();
   const kitCtx = {
     THREE,
     mat: getMaterial,
-    rounded: (w, h, d, r, seg = 4) => new RoundedBoxGeometry(w, h, d, seg, Math.max(0.0005, Math.min(r, w / 2, h / 2, d / 2))),
+    rounded(w, h, d, r, seg = 4) {
+      const radius = Math.max(0.0005, Math.min(r, w / 2, h / 2, d / 2));
+      const key = `${w}|${h}|${d}|${radius}|${seg}`;
+      if (!roundedBoxes.has(key)) roundedBoxes.set(key, new THREE.BufferGeometry().copy(new RoundedBoxGeometry(w, h, d, seg, radius)));
+      return roundedBoxes.get(key).clone();
+    },
     quality: tier
   };
 
@@ -197,6 +210,17 @@ export function createViewer(container, options = {}) {
   /** Load timing: the next drawn frame is the load's first (`amco:first-render`), then it is on screen (`amco:first-frame`). */
   let firstFramePending = false;
   let firstFrameDrawn = false;
+  /** Callbacks waiting until the load's first frame is on screen, or until the viewer is off-screen (no frame comes). */
+  const shownWaiters = [];
+  /**
+   * Interactive viewers show a model as soon as its opening view is ready and stream the rest in
+   * afterwards (see finishLoad); still renders build everything before the first frame.
+   */
+  const streamFurniture = interactive;
+  /** Load token whose furniture is streaming in (0 when none): the frame governor does not judge those frames. */
+  let streaming = 0;
+  /** The current load's background work; resolves when it is done or cancelled. */
+  let completion = Promise.resolve();
   /** Timer of the fade between a room and another view (0 when none), and the token of that fade. */
   let fadeTimer = 0;
   let fadeToken = 0;
@@ -931,7 +955,9 @@ export function createViewer(container, options = {}) {
     if (firstFrameDrawn) {
       firstFrameDrawn = false;
       markLoad('first-frame');
-      markLoad('full-ready');
+    }
+    if (shownWaiters.length && ((!firstFramePending && !firstFrameDrawn && !compiling) || !view3d.isActive())) {
+      while (shownWaiters.length) shownWaiters.shift()();
     }
     const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
     last = now;
@@ -966,7 +992,7 @@ export function createViewer(container, options = {}) {
       view3d.render();
     }
     dirty = false;
-    if (auto && renderedLastFrame) governor.sample(now - lastRender);
+    if (auto && renderedLastFrame && streaming !== loadToken) governor.sample(now - lastRender);
     lastRender = now;
     renderedLastFrame = true;
     while (waiters.length) waiters.shift()();
@@ -1001,30 +1027,120 @@ export function createViewer(container, options = {}) {
     compiled = null;
   }
 
+  /**
+   * Resolves once the load's first frame is on screen, or at once while the viewer is off-screen
+   * (no frame comes then, and the background work may as well go ahead).
+   * @returns {Promise<void>}
+   */
+  function firstFrameShown() {
+    return new Promise((resolve) => shownWaiters.push(resolve));
+  }
+
+  /**
+   * Compiles, in the background, the shaders of everything the current view hides (section caps,
+   * ceilings, cut-away walls and fixtures), so that a later switch to a view showing them does not
+   * stall. Hidden objects are shown only for the synchronous start of the compile.
+   * @returns {Promise<void>}
+   */
+  function compileHidden() {
+    const hidden = [];
+    compiled.root.traverse((object) => {
+      if (object.visible) return;
+      object.visible = true;
+      hidden.push(object);
+    });
+    const ready = view3d.compile();
+    for (const object of hidden) object.visible = false;
+    return ready;
+  }
+
+  /**
+   * A load's background work after its first frame: shaders for the views the opening view hides,
+   * the interior light box, then the furniture left for later (built in slices, its textures drawn
+   * and its shaders compiled before any of it is shown, so no frame stalls on it). Every step stops
+   * when a newer load or disposal makes it stale.
+   * @param {number} token load token
+   * @returns {Promise<void>}
+   */
+  async function finishLoad(token) {
+    const stale = () => token !== loadToken || disposed;
+    await firstFrameShown();
+    if (stale()) return;
+    const hiddenReady = compileHidden().catch((error) => console.error(error));
+    await yieldToBrowser();
+    if (stale()) return;
+    lighting.prepare();
+    const model = compiled;
+    if (model.pendingFixtures.length) {
+      streaming = token;
+      const built = [];
+      const start = performance.now();
+      const done = await runSliced(model.pendingFixtures, (fixture) => {
+        const item = buildPendingFixture(model, fixture);
+        if (item) built.push(item);
+      }, { cancelled: stale });
+      if (done) await drawPendingTextures({ cancelled: stale });
+      if (stale()) return;
+      const staging = new THREE.Group();
+      for (const item of built) staging.add(item.object);
+      const shaders = view3d.compile(staging);
+      view3d.uploadTextures(staging);
+      try {
+        await shaders;
+      } catch (error) {
+        console.error(error);
+      }
+      if (stale()) return;
+      addPendingFixtures(model, built);
+      model.pendingFixtures = [];
+      picker.setTargets(model.surfaceMeshes, [...model.floors, ...model.blockers]);
+      applyVisibility();
+      measureLoad('stream-fixtures', start, { count: built.length });
+      streaming = 0;
+      governor.reset();
+    }
+    roundedBoxes = new Map();
+    await hiddenReady;
+    if (stale()) return;
+    markLoad('full-ready');
+  }
+
   /* ------------------------------------------------------------ API */
 
   const api = {
     /**
-     * Compiles a Building Model into the scene and applies paint (the given state, or the
-     * building's defaults).
+     * Compiles a Building Model into the scene, applies paint (the given state, or the building's
+     * defaults) and opens a view. Resolves when the opening view is ready to draw: in an
+     * interactive viewer, furniture the opening view does not show and shaders for other views
+     * then follow in the background (see `whenComplete`).
      * @param {object} next Building Model (amco.building/1)
      * @param {PaintState} [state]
+     * @param {ViewSpec} [openingView] view to open (default: the building's first view, else the exterior)
      * @returns {Promise<void>}
      */
-    async load(next, state) {
+    async load(next, state, openingView) {
       const token = ++loadToken;
       markLoad('load-start', { tier });
       const check = validateBuilding(next);
       if (!check.ok) throw new Error(`This building cannot be shown: ${check.errors.join('; ')}`);
       setMaterialQuality(tier);
-      const warmStart = performance.now();
-      await warmMaterials(materialsFor(next));
-      measureLoad('warm-textures', warmStart);
-      if (token !== loadToken || disposed) return;
       unload();
       building = next;
       kitCtx.quality = tier;
-      compiled = timeLoad('compile', () => compileBuilding(next, { quality: tier, mat: getMaterial, kitCtx }));
+      roundedBoxes = new Map();
+      const first = (next.views || [])[0];
+      const fallback = first ? first.id : 'exterior';
+      const opening = resolveView(openingView || fallback) || { mode: 'exterior' };
+      let shellShaders = Promise.resolve();
+      compiled = timeLoad('compile', () => compileBuilding(next, {
+        quality: tier,
+        mat: getMaterial,
+        kitCtx,
+        opening: streamFurniture ? opening : null,
+        onShell: (root) => {
+          shellShaders = view3d.compile(root);
+        }
+      }));
       scene.add(compiled.root);
       surfaces = compiled.surfaces;
       surfaceById = new Map(surfaces.map((s) => [s.id, s]));
@@ -1036,30 +1152,36 @@ export function createViewer(container, options = {}) {
       picker.setTargets(compiled.surfaceMeshes, [...compiled.floors, ...compiled.blockers]);
       paintState = state ? cleanState(state) : defaultPaintState(next, surfaces);
       paintMaterials(surfaces.map((s) => s.id), false);
-      const first = (next.views || [])[0];
-      setView(first ? first.id : 'exterior', false);
+      if (!(openingView && setView(openingView, false))) setView(fallback, false);
       compiling = token;
-      const hidden = [];
-      compiled.root.traverse((object) => {
-        if (object.visible) return;
-        object.visible = true;
-        hidden.push(object);
-      });
+      const stale = () => token !== loadToken || disposed;
       const compileStart = performance.now();
+      const shaders = Promise.all([shellShaders, view3d.compile(), view3d.compilePasses()]);
+      await drawPendingTextures({ cancelled: stale });
+      if (!stale()) {
+        view3d.uploadTextures();
+        view3d.warmUp();
+      }
       try {
-        await view3d.precompile();
+        await shaders;
       } catch (error) {
         console.error(error);
       }
       measureLoad('shader-compile', compileStart);
-      for (const object of hidden) object.visible = false;
       if (compiling === token) compiling = 0;
-      if (token !== loadToken || disposed) return;
-      applyVisibility();
+      if (stale()) return;
       firstFramePending = true;
       invalidate();
       markLoad('load-done');
+      completion = finishLoad(token);
     },
+    /**
+     * Resolves when the current load's background work is done: furniture streamed in and the
+     * shaders of every view compiled (at once for a still render). Also resolves when a newer
+     * load or disposal cancels that work.
+     * @returns {Promise<void>}
+     */
+    whenComplete: () => completion,
     /**
      * Moves the camera to a view: a building view id, 'exterior', 'dollhouse', 'room:<id>' or a spec.
      * @param {ViewSpec} viewArg
@@ -1241,6 +1363,7 @@ export function createViewer(container, options = {}) {
       disposed = true;
       cancelFade();
       cancelAnimationFrame(raf);
+      while (shownWaiters.length) shownWaiters.shift()();
       if (interactive) {
         canvas.removeEventListener('pointerdown', onPointerDown);
         canvas.removeEventListener('pointerup', onPointerUp);

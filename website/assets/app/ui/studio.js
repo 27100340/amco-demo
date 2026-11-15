@@ -431,9 +431,8 @@ export function mountStudio(root, options) {
     status.textContent = 'Building the 3D model…';
     root.classList.add('is-loading');
     try {
-      await viewer.load(next, paintState);
+      await viewer.load(next, paintState, view);
       buildViewBar();
-      if (view) viewer.setView(view);
       currentView = viewer.getView();
       renderViews();
       hint.textContent = hintFor(currentView.mode, touch);

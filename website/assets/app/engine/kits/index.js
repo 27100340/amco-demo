@@ -42,6 +42,23 @@ export function buildKit(id, params, ctx) {
 }
 
 /**
+ * A kit builder for one model load: each distinct kit and parameter set is built once and every
+ * placement gets a copy. Copies share the first build's geometry and materials, so they look the
+ * same and cost a fraction of a build (a row of identical windows, a set of dining chairs). The
+ * first build is kept aside, so later copies never inherit changes made to a placed copy.
+ * @param {KitContext} ctx build context
+ * @returns {(id: string, params?: object) => import('three').Object3D} builds or copies a kit; throws like `buildKit`
+ */
+export function createKitBuilder(ctx) {
+  const templates = new Map();
+  return (id, params = {}) => {
+    const key = `${id}|${JSON.stringify(params)}`;
+    if (!templates.has(key)) templates.set(key, buildKit(id, params, ctx));
+    return templates.get(key).clone();
+  };
+}
+
+/**
  * List registered kit ids.
  * @returns {string[]} kit ids
  */

@@ -2,7 +2,8 @@
  * Visualiser page: a gallery of showcase properties with kind filters, and the 3D studio below.
  * URL state: `?property=<id>&view=<view>` is read on load and kept up to date with replaceState.
  * `?still=1` hides every control, renders at high quality and sets `window.__amcoReady` once the
- * first full frame is drawn (used by tools/render-stills.mjs); `?light=warm|cool` sets the light;
+ * model is complete and a full frame is drawn (used by tools/render-stills.mjs); `?light=warm|cool`
+ * sets the light;
  * `?quality=high|medium|low` forces a quality tier instead of the automatic one (used by
  * tools/load-timing.mjs).
  */
@@ -158,6 +159,7 @@ async function start() {
   try {
     await open(entry, params.get('view'));
     if (still && studio && studio.viewer) {
+      await studio.viewer.whenComplete();
       await studio.viewer.rendered();
       await studio.viewer.rendered();
     }
