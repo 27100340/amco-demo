@@ -1056,9 +1056,10 @@ export function createViewer(container, options = {}) {
 
   /**
    * A load's background work after its first frame: shaders for the views the opening view hides,
-   * the interior light box, then the furniture left for later (built in slices, its textures drawn
-   * and its shaders compiled before any of it is shown, so no frame stalls on it). Every step stops
-   * when a newer load or disposal makes it stale.
+   * the interior light box, then the fixtures left for later, batch by batch (each built in slices,
+   * its textures drawn and its shaders compiled before any of it is shown, so no frame stalls on
+   * it; the sun is refitted to the grown bounds). Every step stops when a newer load or disposal
+   * makes it stale.
    * @param {number} token load token
    * @returns {Promise<void>}
    */
@@ -1071,11 +1072,12 @@ export function createViewer(container, options = {}) {
     if (stale()) return;
     lighting.prepare();
     const model = compiled;
-    if (model.pendingFixtures.length) {
-      streaming = token;
+    const start = performance.now();
+    let count = 0;
+    streaming = token;
+    while (model.pendingFixtures.length) {
       const built = [];
-      const start = performance.now();
-      const done = await runSliced(model.pendingFixtures, (fixture) => {
+      const done = await runSliced(model.pendingFixtures[0], (fixture) => {
         const item = buildPendingFixture(model, fixture);
         if (item) built.push(item);
       }, { cancelled: stale });
@@ -1092,13 +1094,15 @@ export function createViewer(container, options = {}) {
       }
       if (stale()) return;
       addPendingFixtures(model, built);
-      model.pendingFixtures = [];
+      model.pendingFixtures.shift();
       picker.setTargets(model.surfaceMeshes, [...model.floors, ...model.blockers]);
       applyVisibility();
-      measureLoad('stream-fixtures', start, { count: built.length });
-      streaming = 0;
-      governor.reset();
+      lightForView();
+      count += built.length;
     }
+    if (count) measureLoad('stream-fixtures', start, { count });
+    streaming = 0;
+    governor.reset();
     roundedBoxes = new Map();
     await hiddenReady;
     if (stale()) return;
@@ -1159,8 +1163,8 @@ export function createViewer(container, options = {}) {
       const shaders = Promise.all([shellShaders, view3d.compile(), view3d.compilePasses()]);
       await drawPendingTextures({ cancelled: stale });
       if (!stale()) {
-        view3d.uploadTextures();
-        view3d.warmUp();
+        timeLoad('upload-textures', () => view3d.uploadTextures());
+        timeLoad('warm-up', () => view3d.warmUp());
       }
       try {
         await shaders;

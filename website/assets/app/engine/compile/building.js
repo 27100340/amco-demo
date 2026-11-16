@@ -5,7 +5,6 @@
 import * as THREE from 'three';
 import '../kits/all.js';
 import { hasKit, createKitBuilder } from '../kits/index.js';
-import { KIT_FAMILIES } from '../kits/ids.js';
 import { nodeWalls, wallFootprints, findRoomFaces, pointInPolygon } from '../../model/geometry.js';
 import { deriveSurfaces, roomPolygons } from '../../model/surfaces.js';
 import { createPaintMaterial } from '../materials/registry.js';
@@ -26,29 +25,30 @@ const CANOPY_DEPTH = 1.8;
 const CANOPY_MIN_HEIGHT = 1.8;
 /** Inside: wall-hung fixtures (curtains, art, mirrors, AC units) reaching this far into the room (m). */
 const HUNG_DEPTH = 0.35;
-/** Room uses open to the outside: their fixtures show from the street, so they are never left for later. */
+/** Room uses open to the outside: their fixtures count as outside. */
 const OPEN_AIR_USES = new Set(['porch', 'balcony']);
-/** Kits of the outside (façade, roof and site pieces), never left for later wherever they stand. Stairs and indoor AC units are furniture. */
-const OUTDOOR_KITS = new Set(KIT_FAMILIES.exterior.filter((id) => !['stair.dogleg', 'stair.straight', 'ac.split'].includes(id)));
+/** The building's own outside pieces (façade, roof, gates and shop signs): part of the first frame wherever they stand. */
+const BUILDING_KITS = new Set(['louvre.screen', 'acp.band', 'canopy.slab', 'balcony.rail', 'ac.outdoor', 'tank.water', 'gate.sliding', 'sign.fascia', 'awning']);
 /** Fixtures shorter than this (m) do not block walking. */
 const COLLIDER_MIN_HEIGHT = 0.25;
 
 /**
- * Splits fixtures into those the opening view needs at once and those that can stream in after
- * the first frame: furniture inside enclosed rooms waits, except in the room the view opens in.
- * Fixtures outside, on porches and balconies, and outdoor kits anywhere (canopies, louvres, roof
- * tanks, outdoor AC units) come at once.
+ * Sorts fixtures by when the opening view needs them. `now`: the building's own outside pieces
+ * (canopies, louvres, rails, roof tanks, signs) and the furniture of the room the view opens in,
+ * built before the first frame. `soon`: the rest of the outside and of porches (plants, cars,
+ * street lights), streamed in first after it. `later`: furniture inside the other rooms.
  * @param {object[]} list the building's fixtures
  * @param {Map<string, { id: string, level: string, use?: string, polygon: number[][] }>} rooms compiled rooms
  * @param {{ mode: string, room?: string }|null} opening opening view; null builds everything at once
- * @returns {{ now: object[], later: object[] }}
+ * @returns {{ now: object[], soon: object[], later: object[] }}
  */
 export function splitFixtures(list, rooms, opening) {
-  if (!opening) return { now: list, later: [] };
+  if (!opening) return { now: list, soon: [], later: [] };
   const now = [];
+  const soon = [];
   const later = [];
   for (const fixture of list) {
-    if (OUTDOOR_KITS.has(fixture.kit)) {
+    if (BUILDING_KITS.has(fixture.kit)) {
       now.push(fixture);
       continue;
     }
@@ -59,10 +59,11 @@ export function splitFixtures(list, rooms, opening) {
         break;
       }
     }
-    const waits = room && !OPEN_AIR_USES.has(room.use) && !(opening.mode === 'room' && opening.room === room.id);
-    (waits ? later : now).push(fixture);
+    if (room && opening.mode === 'room' && opening.room === room.id) now.push(fixture);
+    else if (!room || OPEN_AIR_USES.has(room.use)) soon.push(fixture);
+    else later.push(fixture);
   }
-  return { now, later };
+  return { now, soon, later };
 }
 
 /**
@@ -186,14 +187,14 @@ function attachFacadeFixtures(wallGroups, fixtures, elevation) {
  * @property {{ object: THREE.Object3D, level: string, box: THREE.Box3 }[]} fixtures placed fixtures with world bounds
  * @property {THREE.Object3D[]} blockers solid objects that stop a pick reaching a wall behind them
  * @property {string[]} missingKits fixture kits that are not registered
- * @property {object[]} pendingFixtures fixtures left for later (see `compileBuilding`'s `opening`); build them
- *   with `buildPendingFixture` and add them with `addPendingFixtures`
+ * @property {object[][]} pendingFixtures fixtures left for after the first frame, in batches to stream in order (see
+ *   `compileBuilding`'s `opening`); build them with `buildPendingFixture` and add them with `addPendingFixtures`
  * @property {object} placement what later fixture builds need (kit builder, levels); internal
  */
 
 /**
- * Compiles a building. With `opening`, furniture in enclosed rooms the opening view does not show
- * is left in `pendingFixtures`, to stream in after the first frame; without it, everything is built.
+ * Compiles a building. With `opening`, fixtures the opening view can do without (see `splitFixtures`)
+ * are left in `pendingFixtures`, to stream in after the first frame; without it, everything is built.
  * `onShell` is called with the root once walls, floors, slabs and roof exist (before fixtures and
  * the site), so their shaders can start compiling while the rest is built.
  * @param {import('../../model/schema.js').Building} building
@@ -292,10 +293,10 @@ export function compileBuilding(building, options) {
   const placement = { buildKit: ctx.buildKit, elevation, levelGroups, root, wallGroups: out.wallGroups };
   const known = (building.fixtures || []).filter((fixture) => hasKit(fixture.kit));
   const missingKits = new Set((building.fixtures || []).filter((fixture) => !hasKit(fixture.kit)).map((fixture) => fixture.kit));
-  const { now, later } = splitFixtures(known, out.rooms, options.opening || null);
+  const { now, soon, later } = splitFixtures(known, out.rooms, options.opening || null);
   const kitsStart = performance.now();
   placeFixtures(now.map((fixture) => buildFixture(fixture, placement)).filter(Boolean), { fixtures, colliders: out.colliders, blockers });
-  measureLoad('compile:kits', kitsStart, { count: now.length, later: later.length });
+  measureLoad('compile:kits', kitsStart, { count: now.length, later: soon.length + later.length });
   attachFacadeFixtures(out.wallGroups, fixtures, elevation);
 
   root.updateMatrixWorld(true);
@@ -338,7 +339,7 @@ export function compileBuilding(building, options) {
     fixtures,
     blockers,
     missingKits: [...missingKits],
-    pendingFixtures: later,
+    pendingFixtures: [soon, later].filter((batch) => batch.length),
     placement
   };
 }

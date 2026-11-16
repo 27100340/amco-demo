@@ -11,8 +11,10 @@
  *   load    (default) opens visualiser.html?property=<id>&quality=<tier>#studio and times every load
  *           step: module load, property data, renderer and lighting set-up, procedural textures,
  *           building compile (walls, floors, slabs, kits, site; textures made inside each step are
- *           counted under textures), shader compile, the first frame's shadow map, the first frame
- *           on screen, furniture streamed in after it, and full ready (all background work done).
+ *           counted under textures), shader compile (with the texture uploads and the one-pixel
+ *           warm-up that draws the shadow map and the sky), the first frame's shadow map (when the
+ *           warm-up did not draw it), the first frame on screen, furniture streamed in after it, and
+ *           full ready (all background work done).
  *           `--tier auto` lets the engine choose.
  *   sample  my-property.html: Load the sample project, Build, then Paint in 3D, timed to the first
  *           frame of the 3D step (quality chosen by the engine).
@@ -162,9 +164,9 @@ async function launch({ width, height, gpu, network }) {
       ws.close();
       if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(chrome.pid), '/T', '/F'], { stdio: 'ignore' });
       else chrome.kill();
-      await sleep(1000);
+      await sleep(1500);
       try {
-        rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+        rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
       } catch {
         process.stderr.write(`Could not remove the temporary profile ${profile}\n`);
       }
@@ -247,6 +249,7 @@ function summarise(data, origin = 0) {
     site: total('compile:site', true),
     shaderCompile: total('shader-compile'),
     shadowMap: shadow ? shadow.duration : null,
+    warmUp: total('warm-up'),
     firstRender: total('first-render'),
     firstFrame: mark('first-frame'),
     studioReady: mark('studio-ready'),
@@ -285,7 +288,7 @@ function printTable(title, groups, columns) {
 const LOAD_COLUMNS = [
   ['tier', 'tier'], ['modules', 'modules'], ['propertyData', 'property data'], ['renderer', 'renderer'], ['lighting', 'lighting'],
   ['textures', 'textures'], ['compile', 'compile'], ['walls', 'walls'], ['floors', 'floors'], ['slabs', 'slabs'], ['kits', 'kits'],
-  ['site', 'site'], ['shaderCompile', 'shader compile'], ['shadowMap', 'shadow map (CPU)'], ['firstRender', 'first render (CPU)'],
+  ['site', 'site'], ['shaderCompile', 'shader compile'], ['warmUp', 'warm-up (shadow map, sky)'], ['shadowMap', 'shadow map (CPU)'], ['firstRender', 'first render (CPU)'],
   ['firstFrame', 'first frame'], ['streamed', 'furniture streaming (after)'], ['fullReady', 'full ready']
 ];
 

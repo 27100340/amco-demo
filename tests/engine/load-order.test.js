@@ -21,14 +21,15 @@ const FIXTURES = [
 ];
 
 test('without an opening view every fixture is built at once', () => {
-  const { now, later } = splitFixtures(FIXTURES, ROOMS, null);
+  const { now, soon, later } = splitFixtures(FIXTURES, ROOMS, null);
   assert.equal(now.length, FIXTURES.length);
-  assert.equal(later.length, 0);
+  assert.equal(soon.length + later.length, 0);
 });
 
-test('the exterior opening view leaves furniture in enclosed rooms for later', () => {
-  const { now, later } = splitFixtures(FIXTURES, ROOMS, { mode: 'exterior' });
-  assert.deepEqual(now.map((f) => f.kit), ['car.sedan', 'tree.ornamental', 'tank.water']);
+test('the exterior view opens with the outside pieces of the building; the outside, then the rooms, follow', () => {
+  const { now, soon, later } = splitFixtures(FIXTURES, ROOMS, { mode: 'exterior' });
+  assert.deepEqual(now.map((f) => f.kit), ['tank.water']);
+  assert.deepEqual(soon.map((f) => f.kit), ['car.sedan', 'tree.ornamental']);
   assert.deepEqual(later.map((f) => f.kit), ['sofa.3-seat', 'bed.king', 'stair.dogleg']);
 });
 
