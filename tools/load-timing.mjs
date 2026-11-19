@@ -5,13 +5,15 @@
  * Usage:
  *   node tools/load-timing.mjs [--flow load|sample|switch|frames] [--property <id>[,<id>...]]
  *     [--tier high,medium|auto] [--runs 3] [--port 8767] [--width 1440] [--height 900]
- *     [--swiftshader] [--warm] [--network broadband] [--json <file>]
+ *     [--swiftshader] [--warm] [--network broadband] [--json <file>] [--timeline]
+ *     [--profile <file>] [--pause <ms>]
  *
  * Flows:
  *   load    (default) opens visualiser.html?property=<id>&quality=<tier>#studio and times every load
  *           step: module load, property data, renderer and lighting set-up, procedural textures,
  *           building compile (walls, floors, slabs, kits, site; textures made inside each step are
- *           counted under textures), shader compile (with the texture uploads and the one-pixel
+ *           counted under textures; textures drawn in the texture workers are a separate column,
+ *           the sum of their worker times, which overlap the page's work), shader compile (with the texture uploads and the one-pixel
  *           warm-up that draws the shadow map and the sky), the first frame's shadow map (when the
  *           warm-up did not draw it), the first frame on screen, furniture streamed in after it, and
  *           full ready (all background work done).
@@ -27,7 +29,12 @@
  * Every run starts a fresh Chrome with an empty profile (no HTTP or GPU program cache), on the
  * real GPU unless `--swiftshader`; `--warm` reuses one Chrome for all runs of a property and tier,
  * like a returning visitor. `--network broadband` throttles to 20 ms latency and 25/5 Mbit/s.
- * Tables of medians are printed; `--json` also writes every run. The server is
+ * Tables of medians are printed; `--json` also writes every run; `--timeline` prints each load run's
+ * `amco:` entries in start order (start and duration in ms), to see what sits before the first frame;
+ * `--pause <ms>` waits that long before each run, so the CPU is back at its resting clock (one visitor
+ * loading one page, rather than back-to-back loads that use up a laptop's turbo budget);
+ * `--profile <file>` saves a CPU profile of each load run's page thread up to its first frame
+ * (`<file>` with the run number added; open it in the DevTools Performance panel). The server is
  * `node tools/serve.mjs <port>`, started here when nothing answers on the port.
  * Run one harness (one Chrome) at a time.
  */
@@ -74,7 +81,10 @@ function parseArgs(argv) {
     gpu: !argv.includes('--swiftshader'),
     warm: argv.includes('--warm'),
     network: value('network', null),
-    json: value('json', null)
+    json: value('json', null),
+    timeline: argv.includes('--timeline'),
+    profile: value('profile', null),
+    pause: Number(value('pause', 0)) || 0
   };
 }
 
@@ -225,6 +235,7 @@ function summarise(data, origin = 0) {
     return found ? found.start - origin : null;
   };
   const textures = entries.filter((e) => e.name.startsWith('texture:'));
+  const workerTextures = entries.filter((e) => e.name.startsWith('texture-worker:') && e.start < (mark('first-frame') ?? Infinity) + origin);
   const inside = (span) => textures.filter((t) => t.start >= span.start && t.start + t.duration <= span.start + span.duration + 0.01)
     .reduce((sum, t) => sum + t.duration, 0);
   const total = (name, exclusive = false) => {
@@ -244,6 +255,7 @@ function summarise(data, origin = 0) {
     loadStart: mark('load-start'),
     textures: textures.reduce((sum, t) => sum + t.duration, 0),
     textureCount: textures.length,
+    workerTextures: workerTextures.length ? workerTextures.reduce((sum, t) => sum + t.duration, 0) : null,
     compile: total('compile', true),
     surfaces: total('compile:surfaces', true),
     walls: total('compile:walls', true),
@@ -291,25 +303,41 @@ function printTable(title, groups, columns) {
 
 const LOAD_COLUMNS = [
   ['tier', 'tier'], ['modules', 'modules'], ['propertyData', 'property data'], ['renderer', 'renderer'], ['lighting', 'lighting'],
-  ['textures', 'textures'], ['compile', 'compile'], ['walls', 'walls'], ['floors', 'floors'], ['slabs', 'slabs'], ['kits', 'kits'],
+  ['textures', 'textures'], ['workerTextures', 'textures in workers (before first frame)'], ['compile', 'compile'], ['walls', 'walls'], ['floors', 'floors'], ['slabs', 'slabs'], ['kits', 'kits'],
   ['site', 'site'], ['shaderCompile', 'shader compile'], ['warmUp', 'warm-up (shadow map, sky)'], ['shadowMap', 'shadow map (CPU)'], ['firstRender', 'first render (CPU)'],
   ['firstFrame', 'first frame'], ['streamed', 'furniture streaming (after)'], ['fullReady', 'full ready']
 ];
 
 /**
- * Times a visualiser load.
+ * Times a visualiser load (and profiles it up to the first frame when `profile` names a file).
  * @returns {Promise<object>} the row for this run
  */
-async function loadRun(chrome, base, property, tier) {
+async function loadRun(chrome, base, property, tier, profile = null) {
   const query = new URLSearchParams({ property });
   if (tier !== 'auto') query.set('quality', tier);
+  if (profile) {
+    await chrome.send('Profiler.enable');
+    await chrome.send('Profiler.setSamplingInterval', { interval: 200 });
+    await chrome.send('Profiler.start');
+  }
   await chrome.send('Page.navigate', { url: `${base}/website/visualiser.html?${query}#studio` });
   await sleep(200);
   await waitFor(chrome.evaluate, hasMark('first-frame'));
+  if (profile) writeFileSync(resolve(profile), JSON.stringify((await chrome.send('Profiler.stop')).profile));
   await waitFor(chrome.evaluate, `${hasMark('studio-ready')} && ${hasMark('full-ready')}`);
   await sleep(SETTLE_MS);
   const data = await chrome.evaluate(COLLECT);
-  return { property, gpu: data.gpu, ...summarise(data) };
+  return { property, gpu: data.gpu, entries: data.entries, ...summarise(data) };
+}
+
+/**
+ * Prints a run's entries in start order.
+ * @param {object[]} entries
+ */
+function printTimeline(entries) {
+  const lines = [...entries].sort((a, b) => a.start - b.start)
+    .map((e) => `  ${String(Math.round(e.start)).padStart(6)} ${e.type === 'measure' ? `+${Math.round(e.duration)}`.padStart(6) : '      '} ${e.name}`);
+  process.stdout.write(`${lines.join('\n')}\n`);
 }
 
 /**
@@ -475,6 +503,7 @@ async function main() {
       groups.push(group);
       let chrome = null;
       for (let run = 0; run < args.runs; run++) {
+        if (args.pause) await sleep(args.pause);
         if (!chrome || !args.warm) {
           if (chrome) await chrome.close();
           chrome = await launch(args);
@@ -484,8 +513,11 @@ async function main() {
           if (args.flow === 'sample') row = await sampleRun(chrome, base);
           else if (args.flow === 'switch') row = await switchRun(chrome, base, item.property, item.tier);
           else if (args.flow === 'frames') row = await framesRun(chrome, base, item.property, item.tier);
-          else row = await loadRun(chrome, base, item.property, item.tier);
+          else row = await loadRun(chrome, base, item.property, item.tier, args.profile && args.profile.replace(/(\.cpuprofile)?$/, `-${groups.length}-${run + 1}.cpuprofile`));
+          const { entries, ...summary } = row;
+          row = summary;
           group.runs.push(row);
+          if (args.timeline && entries) printTimeline(entries);
           process.stdout.write(`${item.label} run ${run + 1}: ${JSON.stringify(row, (k, v) => (typeof v === 'number' ? Math.round(v) : v))}\n`);
         } catch (error) {
           process.stderr.write(`${item.label} run ${run + 1} failed: ${error.message}\n`);

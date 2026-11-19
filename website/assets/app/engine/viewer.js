@@ -1160,8 +1160,10 @@ export function createViewer(container, options = {}) {
       compiling = token;
       const stale = () => token !== loadToken || disposed;
       const compileStart = performance.now();
-      const shaders = Promise.all([shellShaders, view3d.compile(), view3d.compilePasses()]);
+      const marked = (promise, name) => promise.then(() => markLoad(name));
+      const shaders = Promise.all([marked(shellShaders, 'shaders:shell'), marked(view3d.compile(), 'shaders:scene'), marked(view3d.compilePasses(), 'shaders:passes')]);
       await drawPendingTextures({ cancelled: stale });
+      markLoad('textures-ready');
       if (!stale()) {
         timeLoad('upload-textures', () => view3d.uploadTextures());
         timeLoad('warm-up', () => view3d.warmUp());
