@@ -26,12 +26,14 @@ const IDLE_GAP_MS = 250;
 
 /**
  * Integrated and software GPUs, by the renderer string WebGL reports (WEBGL_debug_renderer_info,
- * or the plain RENDERER where that is masked): Intel graphics other than discrete Arc A-series
+ * or the plain RENDERER where that is masked): Intel graphics other than discrete Arc A- and B-series
  * cards, AMD APUs ("Radeon Graphics", "Radeon Vega 8 Graphics", "Radeon 780M Graphics"), Apple
- * silicon, phone GPUs and software rasterisers.
+ * silicon, phone GPUs and software rasterisers. Apple silicon counts as integrated on purpose: no
+ * Mac has been measured, and the governor only steps down, so a Mac starts and stays at medium
+ * unless the visitor picks high.
  */
 const INTEGRATED_GPU = /intel|apple|mali|adreno|powervr|radeon(\(tm\))?\s+(vega\s+\d+\s+|\d{3}m\s+)?graphics|swiftshader|llvmpipe|basic render/i;
-const DISCRETE_INTEL = /arc(\(tm\))?\s+a\d{3}/i;
+const DISCRETE_INTEL = /arc(\(tm\))?\s+[ab]\d{3}/i;
 
 /**
  * Whether a WebGL renderer string names an integrated or software GPU.
@@ -56,12 +58,24 @@ export function startingTier(device) {
   return 'high';
 }
 
+/** The probe result, made once per page (each probe creates a WebGL context). */
+let probed = null;
+
 /**
  * Probes WebGL2 with a throwaway context: whether it is available and the GPU it runs on. The
  * context is released straight away.
  * @returns {{ webgl2: boolean, gpu: string|null }}
  */
 function probeGpu() {
+  if (!probed) probed = probeOnce();
+  return probed;
+}
+
+/**
+ * Creates the throwaway context and reads it (see `probeGpu`).
+ * @returns {{ webgl2: boolean, gpu: string|null }}
+ */
+function probeOnce() {
   try {
     const canvas = document.createElement('canvas');
     const gl = window.WebGL2RenderingContext ? canvas.getContext('webgl2') : null;
