@@ -20,7 +20,8 @@
     { id: 'my-property', href: 'my-property.html', label: 'Upload your plans' },
     { id: 'products', href: 'products.html', label: 'Products' },
     { id: 'tools', href: 'tools.html', label: 'Tools & advice' },
-    { id: 'dealers', href: 'dealers.html', label: 'Dealers' }
+    { id: 'dealers', href: 'dealers.html', label: 'Dealers' },
+    { id: 'painters', href: 'painters.html', label: 'Painters' }
   ];
 
   // Inline line icons, 24px grid, drawn with a 1.5px stroke by the .icon class.
@@ -159,7 +160,7 @@
           '<p class="utility-tagline">Made in Lahore since 1985</p>' +
           '<nav class="utility-links" aria-label="Quick links">' +
             '<a href="dealers.html#find">' + icon('pin') + 'Find a dealer</a>' +
-            '<a href="dealers.html#painters">' + icon('brush') + 'Painter services</a>' +
+            '<a href="painters.html">' + icon('brush') + 'Painter services</a>' +
             '<a target="_blank" rel="noopener" href="' + whatsappLink('Assalam o alaikum, I have a question about Amco Paints.') + '">' + icon('whatsapp') + 'WhatsApp</a>' +
           '</nav>' +
         '</div>' +
@@ -207,7 +208,8 @@
           footerColumn('Reach us', [
             ['dealers.html', 'Find a dealer'],
             ['dealers.html#verify', 'Check a tin is genuine'],
-            ['dealers.html#painters', 'Ustad Club for painters'],
+            ['painters.html', 'Trusted painters'],
+            ['painters.html#club', 'Ustad Club for painters'],
             ['tel:+924237163641', CONFIG.phone],
             ['mailto:' + CONFIG.email, CONFIG.email]
           ]) +

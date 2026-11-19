@@ -44,7 +44,8 @@ All in `website/`.
 | `colours.html` | Shade card and colour match from a photo. |
 | `tools.html` | Paint calculator, paint for your city, wall doctor, Eid and shaadi countdown. |
 | `products.html` | Price list, comparison, good/better/best guide. |
-| `dealers.html` | Dealer finder, genuine-tin check, painter booking, Ustad Club. |
+| `dealers.html` | Dealer finder, genuine-tin check, links to the painters page. |
+| `painters.html` | Trusted painters directory, booking, Ustad Club tiers, calculator, referral and join form. |
 | `walkthrough.html` | Old address of the 3D house. It now redirects to `visualiser.html`. |
 
 ## 4. How it works
@@ -79,7 +80,8 @@ Every property, uploaded or built in, is a Building Model with the schema id `am
 | `storage/` | `ProjectStore`: IndexedDB with a memory fallback. |
 | `ui/` | Page controllers, the studio and the shade panel. |
 | `content/` | Photo slots and curated shade lists for the home page. |
-| `legacy.js` | Bridge: re-exports the classic scripts' globals (`AmcoShades`, `Amco`, `AmcoData`) to modules. |
+| `painters/` | Painter directory and Ustad Club logic and HTML builders. Pure, no DOM. |
+| `legacy.js` | Bridge: re-exports the classic scripts' globals (`AmcoShades`, `Amco`, `AmcoData`, `AmcoPainters`) to modules. |
 
 Pages load their module, for example `<script type="module" src="assets/app/ui/home-page.js">`, after the classic scripts they need. CSS is `assets/css/` (`tokens.css` holds the design tokens, `pages/` one file per page).
 
@@ -151,6 +153,8 @@ Run all from the repo root. Chrome is expected at `C:/Program Files/Google/Chrom
 | Cover Up Damp Stop, Cover Up Roof Cool | `website/assets/js/data.js` | Proposed products that do not exist. Tagged "Proposed product". |
 | 63-shade "Rang-e-Pakistan" collection: names, codes, colours | `website/assets/js/shades.js` | A proposal, to be matched to Amco's printed shade card. |
 | Dealer rows and batch codes | `website/assets/js/data.js` | Samples. |
+| Painter listings (8 samples) | `website/assets/js/painters-data.js`, `painters` | Samples, marked Sample listing. Replace with Amco's painter list; keep codes in the USTAD-<CITY>-<NNN> form. |
+| Ustad Club points, tier thresholds, cash-back and referral bonus | `website/assets/js/painters-data.js`, `sizes`, `tiers`, `referral` | Indicative. Not agreed by Amco. |
 | WhatsApp number | `website/assets/js/site.js`, `CONFIG.whatsapp` | A dummy number. Every "Send on WhatsApp" button uses it. |
 | Urdu copy | Across the site | Needs a read by a native speaker. |
 | 11 stock photos | `website/assets/img/photos/` | Unsplash-licensed stand-ins, credited in `CREDITS.md`. Replace with Amco's own shoot, keeping the slot names; update alt text, focal points and hero wall masks in `website/assets/app/content/photos.js`. `hero-living-3` is a 3D render, not a photograph. |

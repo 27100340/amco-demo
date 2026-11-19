@@ -1,4 +1,4 @@
-/* Dealers page: dealer finder, genuine-tin check, painter booking and the Ustad Club. */
+/* Dealers page: dealer finder, genuine-tin check and the painters teaser. */
 
 main section[id] { scroll-margin-top: var(--header-h); }
 
@@ -19,10 +19,6 @@ main section[id] { scroll-margin-top: var(--header-h); }
 .verify-outcome[data-state='genuine'] { box-shadow: inset 4px 0 0 var(--color-ok); }
 .verify-outcome[data-state='unknown'] { box-shadow: inset 4px 0 0 var(--color-warn); }
 
-.form-fields { display: grid; gap: 1.1rem; grid-template-columns: minmax(0, 1fr); }
-.field-error { color: var(--brand-deep); font-size: var(--text-sm); font-weight: 600; }
-.input[aria-invalid='true'],
-.select[aria-invalid='true'] { border-color: var(--color-brand); }
 .club-title { align-items: baseline; }
 .club-title .urdu { font-size: var(--text-xl); color: var(--color-ink-soft); }
 
