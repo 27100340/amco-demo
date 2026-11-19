@@ -18,9 +18,14 @@ export { PROCEDURAL_IDS } from './patterns.js';
 const cache = new Map();
 const blank = new Set();
 const copies = new WeakMap();
+/** The map each copy was made from. */
+const originals = new WeakMap();
 /** Worker draws still running, by key. */
 const jobs = new Map();
-/** The texture workers (null where workers are not available); started on the first reservation. */
+/**
+ * The texture workers (null where workers are not available), started on first use and kept for
+ * the page's lifetime: every page that uses them shows one viewer until it is closed.
+ */
 let pool;
 
 /**
@@ -168,7 +173,25 @@ export function textureCopy(texture, repeat) {
   copy.needsUpdate = true;
   if (!copies.has(texture)) copies.set(texture, []);
   copies.get(texture).push(copy);
+  originals.set(copy, texture);
   return copy;
+}
+
+/**
+ * Lets go of a copy made with `textureCopy` once its material is gone: the cached map stops
+ * tracking it and its GPU upload is freed. Anything else is left alone.
+ * @param {THREE.Texture|null|undefined} texture
+ * @returns {boolean} true when it was a copy and has been released
+ */
+export function releaseTextureCopy(texture) {
+  const original = texture ? originals.get(texture) : undefined;
+  if (!original) return false;
+  const list = copies.get(original) || [];
+  const index = list.indexOf(texture);
+  if (index !== -1) list.splice(index, 1);
+  originals.delete(texture);
+  texture.dispose();
+  return true;
 }
 
 /**

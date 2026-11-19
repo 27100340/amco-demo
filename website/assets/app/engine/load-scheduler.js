@@ -42,3 +42,22 @@ export async function runSliced(items, work, options = {}) {
   }
   return !cancelled();
 }
+
+/**
+ * Runs background work so that it never rejects: an error is reported with `console.error`, and
+ * `cleanup` runs whether the work finished, stopped early or failed.
+ * @param {() => Promise<void>} work
+ * @param {() => void} cleanup
+ * @returns {Promise<boolean>} true when the work finished without an error
+ */
+export async function runGuarded(work, cleanup) {
+  try {
+    await work();
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  } finally {
+    cleanup();
+  }
+}

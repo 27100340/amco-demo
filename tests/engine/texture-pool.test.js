@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { texturePoolSize, createTexturePool, MAX_TEXTURE_WORKERS } from '../../website/assets/app/engine/materials/texture-pool.js';
 import { drawPixels, hasPattern, PROCEDURAL_IDS } from '../../website/assets/app/engine/materials/patterns.js';
-import { generateTexture, reserveTexture, drawPendingTextures, hasPendingTextures } from '../../website/assets/app/engine/materials/procedural.js';
+import { generateTexture, reserveTexture, drawPendingTextures, hasPendingTextures, textureCopy, releaseTextureCopy } from '../../website/assets/app/engine/materials/procedural.js';
 
 test('texture pool leaves one core to the page and stays between 1 and the maximum', () => {
   assert.equal(texturePoolSize(8), MAX_TEXTURE_WORKERS);
@@ -38,4 +38,45 @@ test('reserved textures are drawn on the page thread when there are no workers',
   assert.ok(hasPendingTextures());
   assert.equal(await drawPendingTextures(), true);
   assert.deepEqual(set.map.image.data, drawPixels('brick', 32).map);
+});
+
+test('a Worker constructor that throws breaks the pool instead of the caller', async () => {
+  const had = Object.prototype.hasOwnProperty.call(globalThis, 'Worker');
+  const previous = globalThis.Worker;
+  const originalError = console.error;
+  const logged = [];
+  globalThis.Worker = class {
+    constructor() {
+      throw new Error('module workers are not supported');
+    }
+  };
+  console.error = (error) => logged.push(error);
+  try {
+    const pool = createTexturePool('texture-worker.js', 2);
+    assert.doesNotThrow(() => pool.warm());
+    await assert.rejects(pool.draw('marble', 32), /not available/);
+    assert.equal(logged.length, 1);
+  } finally {
+    console.error = originalError;
+    if (had) globalThis.Worker = previous;
+    else delete globalThis.Worker;
+  }
+});
+
+test('a released texture copy is no longer updated when its map is drawn', async () => {
+  const set = reserveTexture('carpet-tile', 32);
+  const kept = textureCopy(set.map, [2, 2]);
+  const released = textureCopy(set.map, [3, 3]);
+  let disposed = 0;
+  released.addEventListener('dispose', () => {
+    disposed += 1;
+  });
+  assert.equal(releaseTextureCopy(released), true);
+  assert.equal(disposed, 1);
+  assert.equal(releaseTextureCopy(released), false);
+  assert.equal(releaseTextureCopy(set.map), false);
+  const [keptVersion, releasedVersion] = [kept.version, released.version];
+  await drawPendingTextures();
+  assert.ok(kept.version > keptVersion);
+  assert.equal(released.version, releasedVersion);
 });

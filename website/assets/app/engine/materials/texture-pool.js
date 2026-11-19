@@ -56,8 +56,25 @@ export function createTexturePool(workerUrl, size) {
     }
   }
 
-  /** Starts the workers. */
+  /**
+   * Starts the workers. A browser that has workers but cannot start this one (no module workers,
+   * a content security policy, a `file://` page) throws here: the pool is then broken and every
+   * texture is drawn on the page thread.
+   */
   function start() {
+    try {
+      startWorkers();
+    } catch (error) {
+      console.error(error);
+      for (const worker of workers) worker.terminate();
+      workers.length = 0;
+      idle.length = 0;
+      broken = true;
+    }
+  }
+
+  /** Creates the workers and wires up their replies. */
+  function startWorkers() {
     for (let i = 0; i < count; i++) {
       const worker = new Worker(workerUrl, { type: 'module' });
       worker.addEventListener('message', (event) => {
@@ -82,8 +99,8 @@ export function createTexturePool(workerUrl, size) {
 
   return {
     draw(pattern, pixels) {
+      if (!broken && !workers.length) start();
       if (broken) return Promise.reject(new Error('Texture workers are not available'));
-      if (!workers.length) start();
       return new Promise((done, fail) => {
         queue.push({ id: nextJob++, pattern, size: pixels, done, fail });
         pump();

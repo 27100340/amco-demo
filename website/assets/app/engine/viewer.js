@@ -15,9 +15,9 @@ import { createRenderer } from './renderer.js';
 import { pickQuality, createFrameGovernor, lowerTier, QUALITY } from './quality.js';
 import { createLighting } from './lighting.js';
 import { getMaterial, setMaterialQuality, setDeferredTextures } from './materials/registry.js';
-import { drawPendingTextures, startTextureWorkers } from './materials/procedural.js';
+import { drawPendingTextures, releaseTextureCopy, startTextureWorkers } from './materials/procedural.js';
 import { compileBuilding, buildPendingFixture, addPendingFixtures } from './compile/building.js';
-import { runSliced, yieldToBrowser } from './load-scheduler.js';
+import { runSliced, runGuarded, yieldToBrowser } from './load-scheduler.js';
 import { createCameraRig, EYE_HEIGHT, lookAngles } from './cameras.js';
 import { createPicker, isShown } from './picking.js';
 import { createPaintAnimator } from './paint.js';
@@ -1015,6 +1015,7 @@ export function createViewer(container, options = {}) {
   /** Frees the GPU resources of the current building. */
   function unload() {
     cancelFade();
+    roundedBoxes = new Map();
     if (!compiled) return;
     scene.remove(compiled.root);
     const geometries = new Set();
@@ -1023,7 +1024,10 @@ export function createViewer(container, options = {}) {
       if (o.userData.ownMaterial && o.material) o.material.dispose();
     });
     geometries.forEach((g) => g.dispose());
-    for (const material of compiled.surfaceMaterials.values()) material.dispose();
+    for (const material of compiled.surfaceMaterials.values()) {
+      for (const name of ['map', 'normalMap', 'roughnessMap']) releaseTextureCopy(material[name]);
+      material.dispose();
+    }
     animator.clear();
     compiled = null;
   }
@@ -1060,11 +1064,26 @@ export function createViewer(container, options = {}) {
    * the interior light box, then the fixtures left for later, batch by batch (each built in slices,
    * its textures drawn and its shaders compiled before any of it is shown, so no frame stalls on
    * it; the sun is refitted to the grown bounds). Every step stops when a newer load or disposal
-   * makes it stale.
+   * makes it stale. It never rejects: a failure is logged, and the stream state, frame governor
+   * and kit geometry cache are reset whatever happens.
    * @param {number} token load token
    * @returns {Promise<void>}
    */
   async function finishLoad(token) {
+    await runGuarded(() => streamRest(token), () => {
+      if (streaming === token) streaming = 0;
+      if (token !== loadToken) return;
+      governor.reset();
+      roundedBoxes = new Map();
+    });
+  }
+
+  /**
+   * The steps of `finishLoad`.
+   * @param {number} token load token
+   * @returns {Promise<void>}
+   */
+  async function streamRest(token) {
     const stale = () => token !== loadToken || disposed;
     await firstFrameShown();
     if (stale()) return;
@@ -1103,8 +1122,6 @@ export function createViewer(container, options = {}) {
     }
     if (count) measureLoad('stream-fixtures', start, { count });
     streaming = 0;
-    governor.reset();
-    roundedBoxes = new Map();
     await hiddenReady;
     if (stale()) return;
     markLoad('full-ready');
@@ -1124,15 +1141,14 @@ export function createViewer(container, options = {}) {
      * @returns {Promise<void>}
      */
     async load(next, state, openingView) {
-      const token = ++loadToken;
       markLoad('load-start', { tier });
       const check = validateBuilding(next);
       if (!check.ok) throw new Error(`This building cannot be shown: ${check.errors.join('; ')}`);
+      const token = ++loadToken;
       setMaterialQuality(tier);
       unload();
       building = next;
       kitCtx.quality = tier;
-      roundedBoxes = new Map();
       const first = (next.views || [])[0];
       const fallback = first ? first.id : 'exterior';
       const opening = resolveView(openingView || fallback) || { mode: 'exterior' };

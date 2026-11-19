@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { splitFixtures } from '../../website/assets/app/engine/compile/building.js';
 import { createKitBuilder, registerKit } from '../../website/assets/app/engine/kits/index.js';
-import { runSliced } from '../../website/assets/app/engine/load-scheduler.js';
+import { runSliced, runGuarded } from '../../website/assets/app/engine/load-scheduler.js';
 
 const square = (x, y, size = 4) => [[x, y], [x + size, y], [x + size, y + size], [x, y + size]];
 const ROOMS = new Map([
@@ -83,4 +83,27 @@ test('runSliced yields between slices and stops when cancelled', async () => {
   const finished = await runSliced([1, 2, 3, 4], (item) => partial.push(item), { cancelled: () => partial.length >= 2, budgetMs: 0, yieldTo: async () => {} });
   assert.equal(finished, false);
   assert.deepEqual(partial, [1, 2]);
+});
+
+test('guarded background work never rejects and always cleans up', async () => {
+  const originalError = console.error;
+  const logged = [];
+  console.error = (error) => logged.push(error.message);
+  try {
+    let cleaned = 0;
+    const failed = await runGuarded(async () => {
+      throw new Error('fixture failed to build');
+    }, () => {
+      cleaned += 1;
+    });
+    assert.equal(failed, false);
+    assert.deepEqual(logged, ['fixture failed to build']);
+    const finished = await runGuarded(async () => {}, () => {
+      cleaned += 1;
+    });
+    assert.equal(finished, true);
+    assert.equal(cleaned, 2);
+  } finally {
+    console.error = originalError;
+  }
 });
