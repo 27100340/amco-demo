@@ -42,8 +42,6 @@ main > section[id] { scroll-margin-top: var(--header-h); }
   accent-color: var(--color-ink);
 }
 .check-list { display: grid; gap: 0.65rem; }
-.field-error { color: var(--brand-deep); font-weight: 600; }
-.input[aria-invalid='true'] { border-color: var(--color-brand); }
 
 /* Calculator */
 .room-list { list-style: none; margin: 0; padding: 0; gap: 1.5rem; }

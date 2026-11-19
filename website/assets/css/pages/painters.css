@@ -63,12 +63,9 @@ main section[id] { scroll-margin-top: var(--header-h); }
 [data-tier='platinum'] { --tier: var(--tier-platinum); }
 .painter-card[data-tier] { box-shadow: inset 0 3px 0 var(--tier); }
 
-/* WhatsApp forms (same rules the dealers page used). */
+/* WhatsApp forms; the shared field rules live in components.css. */
 .book-panel { max-width: 40rem; }
-.form-fields { display: grid; gap: 1.1rem; grid-template-columns: minmax(0, 1fr); }
-.field-error { color: var(--brand-deep); font-size: var(--text-sm); font-weight: 600; }
-.input[aria-invalid='true'],
-.select[aria-invalid='true'] { border-color: var(--color-brand); }
+.field-error { font-size: var(--text-sm); }
 .ref-input { text-transform: uppercase; letter-spacing: 0.04em; }
 
 /* Ustad Club. */

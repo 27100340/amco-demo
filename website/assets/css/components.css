@@ -565,6 +565,10 @@ a.swatch:hover .swatch-name { text-decoration: underline; text-underline-offset:
   background-size: 1.1rem;
 }
 
+.form-fields { display: grid; gap: 1.1rem; grid-template-columns: minmax(0, 1fr); }
+.field-error { color: var(--brand-deep); font-weight: 600; }
+.input[aria-invalid='true'],
+.select[aria-invalid='true'] { border-color: var(--color-brand); }
 .input-unit { position: relative; }
 .input-unit .input { padding-right: 3rem; }
 .input-unit span {
