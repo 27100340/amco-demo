@@ -23,20 +23,6 @@ export function tierForPoints(points, tiers) {
 }
 
 /**
- * Next year's tier: what last year's points earned, but never more than one
- * step below the painter's current tier.
- * @param {string} currentId the painter's tier this year
- * @param {number} lastYearPoints points earned in the year just ended
- * @param {Tier[]} tiers lowest first
- * @returns {Tier} next year's tier
- */
-export function nextYearTier(currentId, lastYearPoints, tiers) {
-  const earned = tiers.indexOf(tierForPoints(lastYearPoints, tiers));
-  const floor = Math.max(0, tiers.findIndex((tier) => tier.id === currentId) - 1);
-  return tiers[Math.max(earned, floor)];
-}
-
-/**
  * Reads the calculator's "tins a month" box.
  * @param {string} text what the visitor typed
  * @returns {number | null} a whole number from 1 to MAX_TINS_PER_MONTH, or null

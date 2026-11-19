@@ -18,3 +18,8 @@ test('painters.html has the club, calculator, referral, join and FAQ sections', 
   assert.match(html, /data-placeholder="reward values"/);
   assert.match(html, /id="club-years"[^>]*data-rule="years"/);
 });
+test('only the calculator headline is a live region; the points link has no static new-tab target', () => {
+  assert.ok(!/id="calc-result"[^>]*role="status"/.test(html));
+  assert.match(html, /id="calc-status"[^>]*role="status"|role="status"[^>]*id="calc-status"/);
+  assert.ok(!/data-points-link[^>]*target=/.test(html));
+});

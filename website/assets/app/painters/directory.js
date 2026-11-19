@@ -25,6 +25,16 @@ export function normaliseCode(text) {
 }
 
 /**
+ * Tidies the "Painter who sent you" box: a code in capitals, or whatever was
+ * typed, trimmed and in capitals, so a slightly wrong code still reads clearly.
+ * @param {string} text what the visitor typed
+ * @returns {string} the tidied text
+ */
+export function tidyRef(text) {
+  return normaliseCode(text) || String(text).trim().toUpperCase();
+}
+
+/**
  * Directory order: higher tier first, then more jobs with Amco, then name.
  * @param {Painter[]} painters
  * @param {{ id: string }[]} tiers lowest first

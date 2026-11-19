@@ -18,11 +18,11 @@
   ];
 
   var SPECIALITIES = [
-    { id: 'interior', label: 'Interior', urdu: 'اندرونی' },
-    { id: 'exterior', label: 'Exterior', urdu: 'بیرونی' },
-    { id: 'texture', label: 'Texture', urdu: 'ٹیکسچر' },
-    { id: 'wood-metal', label: 'Wood and metal', urdu: 'لکڑی اور لوہا' },
-    { id: 'waterproofing', label: 'Waterproofing', urdu: 'واٹر پروفنگ' }
+    { id: 'interior', label: 'Interior' },
+    { id: 'exterior', label: 'Exterior' },
+    { id: 'texture', label: 'Texture' },
+    { id: 'wood-metal', label: 'Wood and metal' },
+    { id: 'waterproofing', label: 'Waterproofing' }
   ];
 
   // Points for each tin bought, by size (indicative).

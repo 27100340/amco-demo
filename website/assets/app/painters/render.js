@@ -2,6 +2,7 @@
 // for every interpolated text and returns an HTML string. No DOM.
 
 import { initials } from './directory.js';
+import { MAX_TINS_PER_MONTH } from './club.js';
 
 /**
  * @typedef {(text: string) => string} Escape
@@ -144,7 +145,7 @@ export function earnTableHtml(data, { escape }) {
  */
 export function calcResultHtml(result, sizeLabel, { escape, formatPkr }) {
   if (!result) {
-    return '<p class="calc-prompt">Enter how many tins you use in a month, a whole number from 1 to 500.</p>';
+    return `<p class="calc-prompt">Enter how many tins you use in a month, a whole number from 1 to ${MAX_TINS_PER_MONTH}.</p>`;
   }
   const tierName = escape(result.tier.name);
   const rewards = result.tier.rewards.map((reward) => `<li>${escape(reward)}</li>`).join('');
@@ -154,7 +155,7 @@ export function calcResultHtml(result, sizeLabel, { escape, formatPkr }) {
   return '' +
     '<div class="stack stack-sm">' +
       `<p class="calc-headline">About ${escape(formatCount(result.pointsPerYear))} points a year puts you in <span class="tier-badge" data-tier="${escape(result.tier.id)}">${tierName}</span> from next January.</p>` +
-      `<p>Cash-back at ${tierName}: about ${escape(formatPkr(result.cashBackPerYear))} a year on ${escape(sizeLabel.toLowerCase())} tins.</p>` +
+      `<p>Cash-back once you are ${tierName}: about ${escape(formatPkr(result.cashBackPerYear))} a year on ${escape(sizeLabel.toLowerCase())} tins.</p>` +
       `<p class="small muted">${tierName} adds:</p>` +
       `<ul class="list-check">${rewards}</ul>` +
       next +

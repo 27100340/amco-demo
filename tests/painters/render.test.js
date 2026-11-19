@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadClassic } from './load-classic.js';
 import { cardHtml, emptyHtml, tiersTableHtml, calcResultHtml, earnTableHtml } from '../../website/assets/app/painters/render.js';
-import { calculate } from '../../website/assets/app/painters/club.js';
+import { calculate, MAX_TINS_PER_MONTH } from '../../website/assets/app/painters/club.js';
 
 const { AmcoPainters: P } = loadClassic('assets/js/painters-data.js');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -40,7 +40,7 @@ test('calculator result names tier, next tier, or asks for a number', () => {
   const fmt = { escape: esc, formatPkr: (n) => `Rs ${n}` };
   const html = calcResultHtml(calculate(12, 'drum', P), 'Drum', fmt);
   assert.match(html, /2,?304 points/); assert.match(html, /Gold/); assert.match(html, /Platinum/);
-  assert.match(calcResultHtml(null, 'Drum', fmt), /whole number from 1 to 500/);
+  assert.match(calcResultHtml(null, 'Drum', fmt), new RegExp(`whole number from 1 to ${MAX_TINS_PER_MONTH}\.`));
   assert.ok(!/NaN|Infinity|undefined/.test(html));
 });
 test('card actions name the painter for screen readers', () => {
@@ -48,4 +48,9 @@ test('card actions name the painter for screen readers', () => {
   const html = cardHtml(p, P, opts);
   assert.ok(html.includes(`aria-label="Book ${p.name}"`));
   assert.ok(html.includes(`aria-label="WhatsApp Amco about ${p.name}"`));
+});
+test('cash-back is worded as starting once the tier is reached', () => {
+  const html = calcResultHtml(calculate(12, 'drum', P), 'Drum', { escape: esc, formatPkr: (n) => `Rs ${n}` });
+  assert.match(html, /Cash-back once you are Gold: about Rs 34560 a year/);
+  assert.ok(!html.includes('Cash-back at'));
 });

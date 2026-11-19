@@ -5,7 +5,7 @@
 import { amco, painters as data } from '../legacy.js';
 import {
   ALL, orderPainters, filterPainters, readParams, painterLabel,
-  enquiryMessage, noMatchMessage, shareLink
+  enquiryMessage, noMatchMessage, shareLink, tidyRef
 } from '../painters/directory.js';
 import { calculate, parseTins } from '../painters/club.js';
 import {
@@ -16,6 +16,7 @@ const escape = amco.escapeHtml;
 const formatPkr = amco.formatPkr;
 const DEFAULT_SIZE = 'gallon';
 const EXAMPLE_CODE = 'USTAD-LHR-014';
+const ANNOUNCE_DELAY_MS = 600;
 const POINTS_MESSAGE = 'Assalam o alaikum, I would like to check my Ustad Club points. My code: ';
 
 function byId(id) {
@@ -121,6 +122,11 @@ function initBooking(ordered) {
   if (params.painter) { painterEl.value = painterLabel(params.painter); }
   if (params.ref) { refEl.value = params.ref; }
 
+  // Capture phase, so the code is tidied before whatsapp-forms.js builds the message.
+  const tidy = () => { refEl.value = tidyRef(refEl.value); };
+  refEl.addEventListener('change', tidy);
+  refEl.form.addEventListener('submit', tidy, true);
+
   return function book(id) {
     const painter = ordered.find((candidate) => candidate.id === id);
     if (!painter) { return; }
@@ -140,6 +146,8 @@ function initCalculator() {
   const tinsEl = byId('calc-tins');
   const sizeEl = byId('calc-size');
   const resultEl = byId('calc-result');
+  const statusEl = byId('calc-status');
+  let announceTimer = 0;
 
   sizeEl.innerHTML = data.sizes.map((size) =>
     `<option value="${escape(size.id)}"${size.id === DEFAULT_SIZE ? ' selected' : ''}>${escape(size.label)}</option>`).join('');
@@ -149,6 +157,13 @@ function initCalculator() {
     const tins = parseTins(tinsEl.value);
     const result = tins === null ? null : calculate(tins, sizeEl.value, data);
     resultEl.innerHTML = calcResultHtml(result, size ? size.label : '', { escape, formatPkr });
+    // Announce only the headline, once typing pauses, not the whole result per keystroke.
+    window.clearTimeout(announceTimer);
+    announceTimer = window.setTimeout(() => {
+      statusEl.textContent = resultEl.firstElementChild.firstElementChild
+        ? resultEl.firstElementChild.firstElementChild.textContent
+        : resultEl.textContent;
+    }, ANNOUNCE_DELAY_MS);
   }
 
   formEl.addEventListener('input', update);
@@ -172,6 +187,8 @@ function initReferral() {
   });
   document.querySelectorAll('[data-points-link]').forEach((el) => {
     el.href = amco.whatsappLink(POINTS_MESSAGE);
+    el.target = '_blank';
+    el.rel = 'noopener';
   });
 }
 

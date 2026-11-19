@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadClassic } from './load-classic.js';
 import {
   ALL, normaliseCode, orderPainters, filterPainters, readParams,
-  enquiryMessage, noMatchMessage, initials, shareLink, painterLabel
+  enquiryMessage, noMatchMessage, initials, shareLink, painterLabel, tidyRef
 } from '../../website/assets/app/painters/directory.js';
 
 const { AmcoPainters: P } = loadClassic('assets/js/painters-data.js');
@@ -40,4 +40,9 @@ test('messages name the painter and code; no-match names what was looked for', (
   assert.equal(initials('Akram B.'), 'AB');
   assert.equal(shareLink('USTAD-LHR-014', 'https://amco.pk/'), 'https://amco.pk/painters.html?ref=USTAD-LHR-014');
   assert.equal(painterLabel(p), `${p.name} (${p.code})`);
+});
+test('tidyRef upper-cases a typed referral code', () => {
+  assert.equal(tidyRef(' ustad-lhr-014 '), 'USTAD-LHR-014');
+  assert.equal(tidyRef(' akram '), 'AKRAM');
+  assert.equal(tidyRef(''), '');
 });

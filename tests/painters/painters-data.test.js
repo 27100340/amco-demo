@@ -31,3 +31,6 @@ test('every painter is a well-formed sample listing with no phone number', () =>
   }
   assert.deepEqual([...new Set(P.painters.map((p) => p.tier))].sort(), [...tierIds].sort());
 });
+test('specialities carry only id and label (no unused Urdu field)', () => {
+  for (const s of P.specialities) assert.deepEqual(Object.keys(s).sort(), ['id', 'label']);
+});
