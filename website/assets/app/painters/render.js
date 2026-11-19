@@ -63,8 +63,8 @@ export function cardHtml(painter, data, { escape, whatsappHref }) {
       '</p>' +
       verified +
       '<div class="painter-actions">' +
-        `<a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="${escape(whatsappHref)}">WhatsApp</a>` +
-        `<button class="btn btn-sm" type="button" data-book="${escape(painter.id)}">Book</button>` +
+        `<a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="${escape(whatsappHref)}" aria-label="WhatsApp Amco about ${escape(painter.name)}">WhatsApp</a>` +
+        `<button class="btn btn-sm" type="button" data-book="${escape(painter.id)}" aria-label="Book ${escape(painter.name)}">Book</button>` +
       '</div>' +
     '</article>';
 }

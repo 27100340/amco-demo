@@ -43,3 +43,9 @@ test('calculator result names tier, next tier, or asks for a number', () => {
   assert.match(calcResultHtml(null, 'Drum', fmt), /whole number from 1 to 500/);
   assert.ok(!/NaN|Infinity|undefined/.test(html));
 });
+test('card actions name the painter for screen readers', () => {
+  const p = P.painters[0];
+  const html = cardHtml(p, P, opts);
+  assert.ok(html.includes(`aria-label="Book ${p.name}"`));
+  assert.ok(html.includes(`aria-label="WhatsApp Amco about ${p.name}"`));
+});
