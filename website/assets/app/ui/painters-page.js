@@ -121,6 +121,12 @@ function initBooking(ordered) {
   });
   if (params.painter) { painterEl.value = painterLabel(params.painter); }
   if (params.ref) { refEl.value = params.ref; }
+  if (params.painter || params.ref) {
+    // A shared link lands on the form. Scroll again once images have settled the layout.
+    const toForm = () => bookEl.scrollIntoView({ behavior: 'auto' });
+    toForm();
+    window.addEventListener('load', toForm, { once: true });
+  }
 
   // Capture phase, so the code is tidied before whatsapp-forms.js builds the message.
   const tidy = () => { refEl.value = tidyRef(refEl.value); };
