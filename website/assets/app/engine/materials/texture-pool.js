@@ -19,10 +19,11 @@ export function texturePoolSize(cores) {
 }
 
 /**
- * Starts a texture pool. Workers are created on the first job.
+ * Starts a texture pool. Workers are created by `warm()` or on the first job (a worker takes a
+ * few hundred milliseconds to start, so warm the pool before the first textures are needed).
  * @param {URL|string} workerUrl the worker module
  * @param {number} [size] worker count (default from the core count)
- * @returns {{ draw: (id: string, size: number) => Promise<{ map: Uint8Array, normalMap: Uint8Array, roughnessMap: Uint8Array, mean: number[], ms: number }>, dispose: () => void } | null}
+ * @returns {{ draw: (id: string, size: number) => Promise<{ map: Uint8Array, normalMap: Uint8Array, roughnessMap: Uint8Array, mean: number[], ms: number }>, warm: () => void, dispose: () => void } | null}
  *   null where module workers are not available; `draw` rejects when a worker fails, and the
  *   caller then draws the texture itself
  */
@@ -87,6 +88,9 @@ export function createTexturePool(workerUrl, size) {
         queue.push({ id: nextJob++, pattern, size: pixels, done, fail });
         pump();
       });
+    },
+    warm() {
+      if (!broken && !workers.length) start();
     },
     dispose() {
       failAll('Texture pool closed');

@@ -15,7 +15,7 @@ import { createRenderer } from './renderer.js';
 import { pickQuality, createFrameGovernor, lowerTier, QUALITY } from './quality.js';
 import { createLighting } from './lighting.js';
 import { getMaterial, setMaterialQuality, setDeferredTextures } from './materials/registry.js';
-import { drawPendingTextures } from './materials/procedural.js';
+import { drawPendingTextures, startTextureWorkers } from './materials/procedural.js';
 import { compileBuilding, buildPendingFixture, addPendingFixtures } from './compile/building.js';
 import { runSliced, yieldToBrowser } from './load-scheduler.js';
 import { createCameraRig, EYE_HEIGHT, lookAngles } from './cameras.js';
@@ -153,6 +153,7 @@ export function createViewer(container, options = {}) {
   /** View changes jump instead of flying: reduced motion, or a viewer nobody drives (still renders). */
   const instant = reducedMotion || !interactive;
 
+  startTextureWorkers();
   const view3d = timeLoad('renderer', () => createRenderer(container, tier));
   const { renderer, canvas } = view3d;
   const scene = new THREE.Scene();

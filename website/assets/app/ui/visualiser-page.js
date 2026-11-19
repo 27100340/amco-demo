@@ -10,8 +10,11 @@
 import { CATALOGUE, findProperty } from '../properties/index.js';
 import { mountStudio } from './studio.js';
 import { markLoad } from '../engine/load-timing.js';
+import { startTextureWorkers } from '../engine/materials/procedural.js';
 
 markLoad('page-modules');
+// The workers load while the property data is fetched, so they are running when its textures are reserved.
+startTextureWorkers();
 
 const FILTERS = {
   all: () => true,

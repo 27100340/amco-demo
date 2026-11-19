@@ -118,6 +118,15 @@ function reserveSet(id, size) {
 }
 
 /**
+ * Starts the texture workers ahead of the first reservation, so they are running by the time a
+ * model's textures are reserved. Does nothing where workers are not available.
+ */
+export function startTextureWorkers() {
+  const workers = texturePool();
+  if (workers) workers.warm();
+}
+
+/**
  * The PBR maps for a procedural id, cached per id and size. When new, the maps are blank until
  * drawn: at once by `generateTexture`, or by the texture workers (started here), which
  * `drawPendingTextures` waits for. Use it to make materials ahead of the pixels (shaders do not
