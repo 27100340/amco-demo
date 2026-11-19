@@ -16,16 +16,16 @@ const GREETING = 'Assalam o alaikum, ';
 const PAGE_PATH = 'painters.html';
 
 /**
- * @param {string} text a code as typed or taken from a link
+ * @param {string} text a code as typed or taken from a link; spaces and underscores count as hyphens
  * @returns {string | null} the code in capitals, or null when it is not a code
  */
 export function normaliseCode(text) {
-  const code = String(text).trim().toUpperCase();
+  const code = String(text).trim().toUpperCase().replace(/[\s_]+/g, '-');
   return CODE_PATTERN.test(code) ? code : null;
 }
 
 /**
- * Tidies the "Painter who sent you" box: a code in capitals, or whatever was
+ * Tidies the "Painter who sent you" box: a code in capitals with hyphens, or whatever was
  * typed, trimmed and in capitals, so a slightly wrong code still reads clearly.
  * @param {string} text what the visitor typed
  * @returns {string} the tidied text

@@ -10,6 +10,8 @@ const { AmcoPainters: P } = loadClassic('assets/js/painters-data.js');
 
 test('normaliseCode upper-cases good codes and rejects junk', () => {
   assert.equal(normaliseCode(' ustad-lhr-014 '), 'USTAD-LHR-014');
+  assert.equal(normaliseCode('ustad lhr 014'), 'USTAD-LHR-014');
+  assert.equal(normaliseCode('Ustad_Lhr_014'), 'USTAD-LHR-014');
   for (const bad of ['', 'USTAD-LHR-14', '<img src=x onerror=alert(1)>', 'USTAD-LHR-014x']) assert.equal(normaliseCode(bad), null);
 });
 test('orderPainters puts higher tiers first, then more jobs', () => {
