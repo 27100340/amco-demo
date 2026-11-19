@@ -2,6 +2,7 @@ import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFi
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { transformSync } from 'esbuild';
+import { subsetUrdu } from './subset-urdu.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const modules = join(root, 'node_modules');
@@ -46,7 +47,7 @@ function collect(file, seen) {
  * @param {string} file absolute path
  */
 function minify(file) {
-  const result = transformSync(readFileSync(file, 'utf8'), { minify: true, format: 'esm', legalComments: 'none' });
+  const result = transformSync(readFileSync(file, 'utf8'), { minify: true, format: 'esm', legalComments: 'inline' });
   writeFileSync(file, result.code);
 }
 
@@ -113,6 +114,17 @@ for (const subset of subsets) {
     join(modules, '@fontsource-variable', 'instrument-sans', 'files', `instrument-sans-${subset}-wght-normal.woff2`),
     join(fonts, `instrument-sans-${subset}-wght-normal.woff2`)
   );
+}
+
+for (const subset of subsets) {
+  copy(
+    join(modules, '@fontsource-variable', 'noto-nastaliq-urdu', 'files', `noto-nastaliq-urdu-${subset}-wght-normal.woff2`),
+    join(fonts, `noto-nastaliq-urdu-${subset}.woff2`)
+  );
+}
+subsetUrdu();
+for (const [scope, family] of [['@fontsource', 'instrument-serif'], ['@fontsource-variable', 'instrument-sans'], ['@fontsource-variable', 'noto-nastaliq-urdu']]) {
+  copy(join(modules, scope, family, 'LICENSE'), join(fonts, `OFL-${family}.txt`));
 }
 
 process.stdout.write(`Vendored three (${files.size} addon files), pdfjs (with standard fonts, ICC profile and image decoders) and fonts.\n`);
