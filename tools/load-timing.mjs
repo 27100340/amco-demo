@@ -45,6 +45,10 @@ const SETTLE_MS = 1500;
 const POLL_MS = 100;
 const SWITCH_WATCH_MS = 4000;
 const FRAME_SAMPLES = 30;
+/** my-property: the page finishes starting (storage) after its buttons show; a click before that does nothing. */
+const SAMPLE_SETTLE_MS = 1500;
+const SAMPLE_ATTEMPTS = 3;
+const SAMPLE_TIMEOUT_MS = 30000;
 const BROADBAND = { offline: false, latency: 20, downloadThroughput: (25 * 1024 * 1024) / 8, uploadThroughput: (5 * 1024 * 1024) / 8 };
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -316,9 +320,19 @@ async function sampleRun(chrome, base) {
   const now = () => chrome.evaluate('performance.now()');
   await chrome.send('Page.navigate', { url: `${base}/website/my-property.html` });
   await waitFor(chrome.evaluate, `(() => { const b = document.querySelector('[data-load-sample]'); return b && !b.disabled && b.offsetParent !== null; })()`);
-  const t0 = await now();
-  await chrome.evaluate(`document.querySelector('[data-load-sample]').click(), true`);
-  await waitFor(chrome.evaluate, `(() => { const b = document.querySelector('[data-build]'); return b && !b.disabled && b.offsetParent !== null; })()`);
+  await sleep(SAMPLE_SETTLE_MS);
+  const buildReady = `(() => { const b = document.querySelector('[data-build]'); return b && !b.disabled && b.offsetParent !== null; })()`;
+  let t0 = 0;
+  for (let attempt = 0; attempt < SAMPLE_ATTEMPTS; attempt++) {
+    t0 = await now();
+    await chrome.evaluate(`document.querySelector('[data-load-sample]').click(), true`);
+    try {
+      await waitFor(chrome.evaluate, buildReady, SAMPLE_TIMEOUT_MS);
+      break;
+    } catch (error) {
+      if (attempt === SAMPLE_ATTEMPTS - 1) throw error;
+    }
+  }
   const t1 = await now();
   await chrome.evaluate(`document.querySelector('[data-build]').click(), true`);
   const paintButton = `[...document.querySelectorAll('[data-step="review"] [data-go="paint"]')].find((b) => b.offsetParent !== null)`;
