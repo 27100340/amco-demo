@@ -22,7 +22,7 @@ const SKIP_DIRS = new Set(['vendor', 'fonts', 'img', 'samples', 'node_modules', 
 const TEXT_FILE = /\.(?:html|js|mjs|css|json)$/;
 const ARABIC = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\u200C\u200D]/g;
 /** The space and no-break space are always kept, so Urdu phrases never need another face. */
-const BASELINE = ' 00A0';
+const BASELINE = ' ' + String.fromCharCode(160);
 
 /**
  * List the text files under a folder, skipping vendored and binary folders.
