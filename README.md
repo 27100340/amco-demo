@@ -10,7 +10,7 @@ The website has a professional design, a 3D paint visualiser with four showcase 
 |---|---|
 | `website/` | The site. This folder is what you deploy. |
 | `website/assets/app/` | The ES-module code: Building Model, 3D engine, properties, importers, editor, storage, UI. |
-| `website/assets/js/` | Classic scripts for the older pages (shade card, calculator, dealers) and the shared site chrome. |
+| `website/assets/js/` | Classic scripts for the older pages (shade card, calculator, dealers), the painter and club data (`painters-data.js`), the shared WhatsApp forms (`whatsapp-forms.js`) and the shared site chrome. |
 | `website/assets/vendor/`, `website/assets/fonts/` | three.js, pdf.js and fonts, copied from `node_modules` and committed. Nothing loads from a CDN. |
 | `website/samples/` | Sample drawing set (DXF, PDF, zip) for trying the upload page. Generated. |
 | `tests/` | Unit tests for the model, engine, importers, editor, storage and properties. |
@@ -39,13 +39,13 @@ All in `website/`.
 | Page | What it does |
 |---|---|
 | `index.html` | Home: hero photo you can repaint, show-home gallery, paint-your-own-plans pitch, products, trust band. |
-| `visualiser.html` | The 3D studio. Gallery of four properties; view tabs, level selector, shade panel, finish and light, paint estimate. The URL holds the state, for example `?property=dha-residence&view=room:lounge`. |
+| `visualiser.html` | The 3D studio. Gallery of four properties; view tabs, level selector, shade panel, finish and light, paint estimate. The URL holds the state, for example `?property=dha-residence&view=room:lounge`. Other flags: `quality=high|medium|low` (forces a quality tier instead of the automatic choice), `light=day|warm|cool`, and `still=1` (hides the interface, used by `tools/render-stills.mjs`). |
 | `my-property.html` | Upload your plans. Add drawings, check them against the requirement rules, review and trace in 2D, then paint in 3D. Projects stay in the browser. |
 | `colours.html` | Shade card and colour match from a photo. |
 | `tools.html` | Paint calculator, paint for your city, wall doctor, Eid and shaadi countdown. |
 | `products.html` | Price list, comparison, good/better/best guide. |
 | `dealers.html` | Dealer finder, genuine-tin check, links to the painters page. |
-| `painters.html` | Trusted painters directory, booking, Ustad Club tiers, calculator, referral and join form. |
+| `painters.html` | Trusted painters directory, booking, Ustad Club tiers, calculator, referral and join form. `?painter=USTAD-KHI-007` preselects that painter in the booking form and `?ref=USTAD-LHR-014` fills the "Painter who sent you" box (the Ustad Club referral link). Both scroll to the form. Anything that is not a code of that shape is ignored. |
 | `walkthrough.html` | Old address of the 3D house. It now redirects to `visualiser.html`. |
 
 ## 4. How it works
@@ -113,13 +113,13 @@ Implement the `ProjectStore` interface: `list()`, `get(id)`, `save(project)`, `r
 
 ## 6. Drawing conventions for architects
 
-The upload page reads DXF files directly, with no AI. Hand these rules to whoever supplies the drawings. The sample set in `website/samples/` follows them exactly. Spec section 7.3 has the full detail.
+The upload page reads DXF files directly, with no AI. Hand these rules to whoever supplies the drawings. The sample set in `website/samples/drawings/` follows them exactly. Spec section 7.3 has the full detail.
 
 | Item | Convention |
 |---|---|
 | Format | ASCII DXF, R12 or later. A `.dwg` is turned away: in AutoCAD use File, Save As, DXF. PDFs and images are accepted but the customer traces them by hand. |
 | Size | 25 MB per file, 150 MB per project. |
-| Units | Set `$INSUNITS`. If it is missing, units are guessed from the wall thickness (9 inch or 4.5 inch walls) and the customer can correct them. |
+| Units | Set `$INSUNITS` (honoured codes: 1 inch, 2 foot, 4 millimetre, 5 centimetre, 6 metre). If it is missing, units are guessed from the wall thickness (9 inch or 4.5 inch walls) and the customer can correct them. |
 | Wall layers | `A-WALL*` or `WALL*`. Walls drawn as double lines (two parallel lines 75 to 600 mm apart). |
 | Door and window layers | `A-DOOR*` or `DOOR*`; `A-GLAZ*`, `A-WIND*` or `WINDOW*`. Tag them `D1`, `W1` and so on. |
 | Room names | Text on `A-AREA-IDEN`, `A-ANNO-ROOM` or `ROOM*`. |
@@ -137,9 +137,10 @@ Run all from the repo root. Chrome is expected at `C:/Program Files/Google/Chrom
 
 | Command | What it does |
 |---|---|
-| `npm run vendor` (`tools/vendor.mjs`) | Copies three.js, its add-ons, pdf.js and the fonts from `node_modules` into `website/assets/vendor/` and `website/assets/fonts/`. |
+| `npm run vendor` (`tools/vendor.mjs`) | Copies three.js, its add-ons, pdf.js and the fonts from `node_modules` into `website/assets/vendor/` and `website/assets/fonts/`. It also runs `tools/subset-urdu.mjs`, which cuts the Urdu font down to the characters used on the site (needs Python 3 with `fonttools` and `brotli`; re-run it after adding Urdu text). |
+| `node tools/load-timing.mjs` | Times the 3D visualiser's load steps and first frame (spec section 10 target: first frame under 3 s). Flows `load`, `sample`, `switch`, `frames`; options such as `--property`, `--runs`, `--tier`, `--json`. Needs Chrome (`CHROME_PATH`). Run it again after any engine change. |
 | `npm run serve` (`tools/serve.mjs`) | Static server for the repo root. Optional port argument: `node tools/serve.mjs 9000`. |
-| `npm run samples` (`tools/sample-drawings/generate.mjs`) | Writes the DXFs, A3 PDFs, `README.txt`, `manifest.json` and `amco-sample-drawings.zip` into `website/samples/`. `--no-pdf` skips the PDFs. |
+| `npm run samples` (`tools/sample-drawings/generate.mjs`) | Writes the DXFs, A3 PDFs, `README.txt` and `manifest.json` into `website/samples/drawings/`, and `amco-sample-drawings.zip` into `website/samples/`. `--no-pdf` skips the PDFs. |
 | `node tools/render-stills.mjs` | Renders the gallery and home-page stills into `website/assets/img/stills/`. Options: `--property <id>`, `--view <id>`, `--all`, `--light`, `--width`, `--height`, `--gpu`, `--out <dir>`. Slow without `--gpu`. |
 | `node tools/render-tins.mjs` | Renders the four placeholder tin packshots into `website/assets/img/products/`. Needs Python 3 with Pillow for the webp step. |
 | `node tools/screenshot.mjs <url> <out.png> [width] [height] [--full] [--wait=ms] [--eval=js]` | Headless Chrome screenshot of any page on the running server. |
@@ -159,7 +160,7 @@ Run all from the repo root. Chrome is expected at `C:/Program Files/Google/Chrom
 | Urdu copy | Across the site | Needs a read by a native speaker. |
 | 11 stock photos | `website/assets/img/photos/` | Unsplash-licensed stand-ins, credited in `CREDITS.md`. Replace with Amco's own shoot, keeping the slot names; update alt text, focal points and hero wall masks in `website/assets/app/content/photos.js`. `hero-living-3` is a 3D render, not a photograph. |
 | 4 tin packshots | `website/assets/img/products/` | Made by `tools/render-tins.mjs`. Not real Amco tins. Replace with real packshots. |
-| Trust figures "250+ dealers" and "1,200 painters" | `website/index.html` (the `data-placeholder` items) | Not verified. Search for `data-placeholder` to find every one. |
+| Trust figures "1985", "Lahore / Sheikhupura Road", "250+ dealers" and "1,200 painters" | `website/index.html` (the `data-placeholder` items) | Not confirmed by Amco. Search for `data-placeholder` to find every one. |
 | Show-home card copy | `website/index.html` (the "Explore our show homes" section) and the `blurb` fields in `website/assets/app/properties/index.js` | Draft wording. |
 | Shop names "Noor Boutique", "Chai Corner Café", "City Pharmacy" | `website/assets/app/properties/high-street-shops.js` | Fictional, so no real business is shown. |
 | The 3D showcase properties and their stills | `website/assets/app/properties/`, `website/assets/img/stills/` | Generic Lahore-style designs, not Amco projects. Re-render stills if you change a property. |
