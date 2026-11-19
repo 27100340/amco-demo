@@ -115,7 +115,10 @@ async function ensureServer(port) {
 async function launch({ width, height, gpu, network }) {
   const profile = mkdtempSync(join(tmpdir(), 'amco-timing-'));
   const flags = ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--hide-scrollbars',
-    `--window-size=${width},${height}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu-shader-disk-cache'];
+    `--window-size=${width},${height}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu-shader-disk-cache',
+    // A new profile's own background work (updates, sync, extensions) would compete with the page.
+    '--disable-background-networking', '--disable-component-update', '--disable-extensions', '--disable-sync',
+    '--disable-default-apps', '--metrics-recording-only'];
   if (!gpu) flags.push('--use-angle=swiftshader', '--enable-unsafe-swiftshader');
   const chrome = spawn(CHROME, [...flags, 'about:blank'], { stdio: 'ignore' });
   const portFile = join(profile, 'DevToolsActivePort');
