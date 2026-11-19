@@ -19,6 +19,11 @@
   --color-on-ink-soft: #a7acb0;
   --color-line-on-ink: rgba(255, 255, 255, 0.16);
   --color-whatsapp: #1fa855;
+  /* Ustad Club tier metals, muted to pass 4.5:1 as text on --color-paper. */
+  --tier-bronze: #8a5a2b;
+  --tier-silver: #5f6870;
+  --tier-gold: #80640a;
+  --tier-platinum: #3f5d6b;
 
   --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   --font-sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;

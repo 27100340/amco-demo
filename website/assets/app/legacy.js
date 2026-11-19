@@ -1,6 +1,7 @@
 export const shades = window.AmcoShades;
 export const amco = window.Amco;
 export const data = window.AmcoData;
+export const painters = window.AmcoPainters;
 
 /**
  * Look up a paint shade from the legacy shade card.

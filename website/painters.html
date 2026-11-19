@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trusted painters and the Ustad Club | Amco Paints</title>
+  <meta name="description" content="Find a painter Amco trusts in your city and book them on WhatsApp. Painters: see the Amco Ustad Club points, tiers and rewards, and join.">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="stylesheet" href="assets/css/pages/painters.css">
+</head>
+<body data-page="painters">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header data-site-header></header>
+
+  <main id="main">
+    <section class="editorial-head" aria-labelledby="page-title">
+      <div class="wrap editorial-grid">
+        <div class="editorial-copy">
+          <p class="eyebrow">Painters</p>
+          <h1 id="page-title">Trusted painters</h1>
+          <p class="urdu" lang="ur">قابلِ اعتماد پینٹر</p>
+          <p class="lede">A good painter matters as much as good paint. Find a painter Amco knows in your city and book them through us on WhatsApp.</p>
+          <div class="row">
+            <a class="btn" href="#directory">Find a painter</a>
+            <a class="btn btn-ghost" href="#book">Book a painter</a>
+            <a class="btn-link" href="#club">Painters: join the Ustad Club</a>
+          </div>
+        </div>
+        <figure class="editorial-media">
+          <img src="assets/img/photos/painter-1280.webp" srcset="assets/img/photos/painter-640.webp 640w, assets/img/photos/painter-1280.webp 1280w, assets/img/photos/painter-1920.webp 1920w" sizes="(min-width: 981px) 40vw, 100vw" width="1920" height="1179" decoding="async" alt="A painter in a red work suit rolling yellow paint onto a white wall">
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" id="directory" aria-labelledby="directory-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="directory-heading">Painters Amco trusts</h2>
+            <p class="lede">Pick your city and the work you need. Every enquiry comes to Amco on WhatsApp, and we put you in touch.</p>
+          </div>
+          <p class="urdu" lang="ur">امکو کے بھروسے کے پینٹر</p>
+        </div>
+
+        <p class="note painter-note" data-placeholder="sample painters">Sample listings for this prototype. Amco's own painter list replaces them before launch.</p>
+
+        <div class="painter-filters">
+          <div class="field">
+            <span class="label" id="painter-city-label">City</span>
+            <div class="seg seg-wrap" id="painter-city" role="group" aria-labelledby="painter-city-label"></div>
+          </div>
+          <div class="field">
+            <span class="label" id="painter-speciality-label">Work</span>
+            <div class="seg seg-wrap" id="painter-speciality" role="group" aria-labelledby="painter-speciality-label"></div>
+          </div>
+        </div>
+
+        <p class="small muted painter-count" id="painter-count" role="status"></p>
+        <div class="painter-list" id="painter-list"></div>
+        <noscript><p class="note">The painter list needs JavaScript. Switch it on in your browser, or use the booking form below and we will suggest a painter.</p></noscript>
+      </div>
+    </section>
+
+    <section class="band band-wash" id="book" aria-labelledby="book-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="book-heading">Book a painter</h2>
+            <p class="lede">Every request comes to Amco on WhatsApp. We pass it to the painter you chose, or suggest one near you. You agree the rate with the painter yourself.</p>
+          </div>
+          <p class="urdu" lang="ur">پینٹر بک کریں</p>
+        </div>
+
+        <div class="panel book-panel">
+          <form class="form-fields" data-whatsapp-form data-intro="Assalam o alaikum, I would like to book a painter through Amco." novalidate>
+            <div class="field">
+              <label for="book-painter">Painter</label>
+              <select class="select" id="book-painter" name="painter" data-label="Painter" data-empty-text="Any painter Amco suggests" aria-describedby="book-painter-error">
+                <option value="">Any painter Amco suggests</option>
+              </select>
+              <p class="field-error" id="book-painter-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="book-city">City</label>
+              <input class="input" type="text" id="book-city" name="city" autocomplete="address-level2" maxlength="60" required data-label="City" data-required-message="Tell us which city the job is in." aria-describedby="book-city-error">
+              <p class="field-error" id="book-city-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="book-job">Type of job</label>
+              <select class="select" id="book-job" name="job" required data-label="Job" data-required-message="Choose the type of job." aria-describedby="book-job-error">
+                <option value="">Choose the type of job</option>
+                <option>1 or 2 rooms</option>
+                <option>Full house interior</option>
+                <option>Exterior</option>
+                <option>Full house, inside and outside</option>
+              </select>
+              <p class="field-error" id="book-job-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="book-date">Preferred start date (optional)</label>
+              <input class="input" type="date" id="book-date" name="date" data-rule="date" data-label="Preferred start date" data-empty-text="Flexible" aria-describedby="book-date-error">
+              <p class="field-error" id="book-date-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="book-name">Your name</label>
+              <input class="input" type="text" id="book-name" name="name" autocomplete="name" maxlength="80" required data-label="Name" data-required-message="Tell us your name so the painter knows who to ask for." aria-describedby="book-name-error">
+              <p class="field-error" id="book-name-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="book-phone">Phone number</label>
+              <span class="hint" id="book-phone-hint">With the mobile or city code, for example 0300 1234567.</span>
+              <input class="input" type="tel" id="book-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="20" required data-rule="phone" data-label="Phone" data-required-message="Tell us the number the painter should call." aria-describedby="book-phone-hint book-phone-error">
+              <p class="field-error" id="book-phone-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="book-ref">Painter who sent you (optional)</label>
+              <span class="hint" id="book-ref-hint">Their Ustad code, for example USTAD-LHR-014.</span>
+              <input class="input ref-input" type="text" id="book-ref" name="ref" maxlength="20" autocapitalize="characters" autocomplete="off" spellcheck="false" data-label="Sent by" data-empty-text="Nobody" aria-describedby="book-ref-hint book-ref-error">
+              <p class="field-error" id="book-ref-error" hidden></p>
+            </div>
+            <div class="stack stack-sm">
+              <button class="btn btn-wa" type="submit">Send my booking request on WhatsApp</button>
+              <p class="small muted">Nothing is sent from this page. The button opens WhatsApp with your details typed in, and they only reach Amco if you press send there.</p>
+              <p class="small" data-form-status role="status"></p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer data-site-footer></footer>
+
+  <script src="assets/js/shades.js"></script>
+  <script src="assets/js/painters-data.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script src="assets/js/whatsapp-forms.js"></script>
+  <script type="module" src="assets/app/ui/painters-page.js"></script>
+</body>
+</html>
