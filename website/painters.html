@@ -128,6 +128,162 @@
         </div>
       </div>
     </section>
+
+    <section class="band" id="club" aria-labelledby="club-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="club-heading">The Amco Ustad Club</h2>
+            <p class="lede">For painters and contractors who use Amco on their jobs. Every Amco tin you buy earns points, and your points set your tier and your rewards.</p>
+          </div>
+          <p class="urdu" lang="ur">امکو استاد کلب</p>
+        </div>
+
+        <div class="split club-rules">
+          <div class="stack">
+            <ul class="list-check">
+              <li>Points on every Amco tin you buy, recorded from the batch code on the tin or from your dealer bill.</li>
+              <li>Points count per calendar year, January to December. Your total sets your tier for the next year.</li>
+              <li>A quiet year drops you one tier at most, never more.</li>
+              <li>There is no login. Send us your Ustad code on WhatsApp and we tell you your points.</li>
+            </ul>
+            <p class="note" data-placeholder="reward values">Reward values are indicative and will be confirmed by Amco.</p>
+          </div>
+          <div class="stack">
+            <h3 id="club-earn-heading">How you earn points</h3>
+            <div id="club-earn"></div>
+          </div>
+        </div>
+
+        <div class="stack club-tiers-block">
+          <h3 id="club-tiers-heading">Tiers and rewards</h3>
+          <div id="club-tiers"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band band-wash" id="calculator" aria-labelledby="calculator-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="calculator-heading">What would you earn?</h2>
+            <p class="lede">Tell us how many tins you use in a month. We work out your points, your tier and your cash-back for a year.</p>
+          </div>
+          <p class="urdu" lang="ur">آپ کیا کمائیں گے؟</p>
+        </div>
+
+        <div class="panel calc-grid">
+          <form class="form-fields" id="calc-form" novalidate>
+            <div class="field">
+              <label for="calc-tins">Tins I use in a month</label>
+              <input class="input" type="text" id="calc-tins" name="tins" inputmode="numeric" autocomplete="off" maxlength="5" value="10">
+            </div>
+            <div class="field">
+              <label for="calc-size">Usual tin size</label>
+              <select class="select" id="calc-size" name="size"></select>
+            </div>
+          </form>
+          <div class="calc-result" id="calc-result" role="status"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="referral" aria-labelledby="referral-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="referral-heading">Bring a customer, earn bonus points</h2>
+            <p class="lede">Customers who come to you through Amco are worth points on top of the tins you buy.</p>
+          </div>
+          <p class="urdu" lang="ur">گاہک لائیں، بونس پوائنٹس پائیں</p>
+        </div>
+
+        <div class="split">
+          <ol class="list-plain referral-steps">
+            <li>Share your own link, such as <a id="ref-example" href="painters.html?ref=USTAD-LHR-014">painters.html?ref=USTAD-LHR-014</a>, or give the customer your Ustad code.</li>
+            <li>The customer books through this page. Your code goes into their request as "Sent by".</li>
+            <li>When they buy Amco for the job, you get <strong><span data-referral-bonus>the referral bonus</span></strong>, credited once the job's tins are bought.</li>
+          </ol>
+          <div class="panel stack">
+            <p>Booking requests from the directory go to the painter named in them. Amco passes the job on and does not take a cut of your rate.</p>
+            <p class="small muted">Bonus values are indicative and will be confirmed by Amco.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band band-wash" id="join" aria-labelledby="join-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="join-heading">Join the Ustad Club</h2>
+            <p class="lede">Send us your details on WhatsApp. We call you back, record your first tins and give you your Ustad code.</p>
+          </div>
+          <p class="urdu" lang="ur">استاد کلب میں شامل ہوں</p>
+        </div>
+
+        <div class="panel book-panel">
+          <form class="form-fields" data-whatsapp-form data-intro="Assalam o alaikum, I would like to join the Amco Ustad Club." novalidate>
+            <div class="field">
+              <label for="club-name">Your name</label>
+              <input class="input" type="text" id="club-name" name="name" autocomplete="name" maxlength="80" required data-label="Name" data-required-message="Tell us your name." aria-describedby="club-name-error">
+              <p class="field-error" id="club-name-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="club-city">City</label>
+              <input class="input" type="text" id="club-city" name="city" autocomplete="address-level2" maxlength="60" required data-label="City" data-required-message="Tell us which city you work in." aria-describedby="club-city-error">
+              <p class="field-error" id="club-city-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="club-phone">Phone number</label>
+              <span class="hint" id="club-phone-hint">With the mobile or city code, for example 0300 1234567.</span>
+              <input class="input" type="tel" id="club-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="20" required data-rule="phone" data-label="Phone" data-required-message="Tell us the number we should call you on." aria-describedby="club-phone-hint club-phone-error">
+              <p class="field-error" id="club-phone-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="club-years">Years of experience</label>
+              <input class="input" type="text" id="club-years" name="years" inputmode="numeric" maxlength="2" required data-rule="years" data-label="Years of experience" data-required-message="Tell us how many years you have been painting." aria-describedby="club-years-error">
+              <p class="field-error" id="club-years-error" hidden></p>
+            </div>
+            <div class="stack stack-sm">
+              <button class="btn btn-wa" type="submit">Send my application on WhatsApp</button>
+              <p class="small muted">Nothing is sent from this page. The button opens WhatsApp with your details typed in, and they only reach Amco if you press send there.</p>
+              <p class="small" data-form-status role="status"></p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="faq" aria-labelledby="faq-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="stack">
+            <h2 id="faq-heading">Questions painters ask</h2>
+          </div>
+          <p class="urdu" lang="ur">عام سوالات</p>
+        </div>
+
+        <div class="faq-list">
+          <details>
+            <summary>How do I check my points?</summary>
+            <p>On WhatsApp. <a data-points-link target="_blank" rel="noopener" href="#join">Send us your Ustad code</a> and we reply with your points this year and your tier.</p>
+          </details>
+          <details>
+            <summary>When does my tier change?</summary>
+            <p>Once a year, in January. Your points from January to December set your tier for the next year. You can go up any number of tiers, but you drop one tier at most.</p>
+          </details>
+          <details>
+            <summary>Does Amco take a cut of my rate?</summary>
+            <p>No. You agree the rate with the customer yourself. Amco only passes the booking on to you.</p>
+          </details>
+          <details>
+            <summary>Why are these painters marked Sample listing?</summary>
+            <p>This is a prototype of the page. The painters shown are samples, and Amco's own list of club painters replaces them before launch.</p>
+          </details>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer data-site-footer></footer>

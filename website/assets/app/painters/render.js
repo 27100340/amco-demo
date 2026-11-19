@@ -82,3 +82,81 @@ export function emptyHtml(message, { escape, whatsappHref }) {
       `<p><a class="btn btn-wa" target="_blank" rel="noopener" href="${escape(whatsappHref)}">Ask Amco on WhatsApp</a></p>` +
     '</div>';
 }
+
+function formatCount(number) {
+  return Number(number).toLocaleString('en-PK');
+}
+
+/**
+ * Tiers and rewards: one column per tier.
+ * @param {object} data the AmcoPainters data
+ * @param {{ escape: Escape, formatPkr: (amount: number) => string }} options
+ * @returns {string} a scrolling table's HTML
+ */
+export function tiersTableHtml(data, { escape, formatPkr }) {
+  const head = data.tiers.map((tier) =>
+    `<th scope="col"><span class="tier-badge" data-tier="${escape(tier.id)}">${escape(tier.name)}</span></th>`).join('');
+  const reach = data.tiers.map((tier) =>
+    `<td>${tier.minPoints ? `${escape(formatCount(tier.minPoints))} points` : 'From the first tin'}</td>`).join('');
+  const cashBack = data.tiers.map((tier) =>
+    `<td>${data.sizes.map((size) => escape(formatPkr(tier.cashBack[size.id]))).join(' / ')}</td>`).join('');
+  const rewards = data.tiers.map((tier, index) => {
+    const inherited = index ? `<p class="small muted">Everything in ${escape(data.tiers[index - 1].name)}, plus</p>` : '';
+    const items = tier.rewards.map((reward) => `<li>${escape(reward)}</li>`).join('');
+    return `<td>${inherited}<ul class="list-check">${items}</ul></td>`;
+  }).join('');
+  const sizeNames = data.sizes.map((size) => size.label.toLowerCase()).join(' / ');
+  return '' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Ustad Club tiers and rewards">' +
+      '<table class="table club-table">' +
+        `<thead><tr><th scope="col"><span class="visually-hidden">Tier</span></th>${head}</tr></thead>` +
+        '<tbody>' +
+          `<tr><th scope="row">Points a year to reach it</th>${reach}</tr>` +
+          `<tr><th scope="row">Cash-back per ${escape(sizeNames)}</th>${cashBack}</tr>` +
+          `<tr><th scope="row">Rewards</th>${rewards}</tr>` +
+        '</tbody>' +
+      '</table>' +
+    '</div>';
+}
+
+/**
+ * How points are earned: tin size and points per tin.
+ * @param {object} data the AmcoPainters data
+ * @param {{ escape: Escape }} options
+ * @returns {string} a table's HTML
+ */
+export function earnTableHtml(data, { escape }) {
+  const rows = data.sizes.map((size) =>
+    `<tr><th scope="row">${escape(size.label)}</th><td class="num">${escape(String(size.points))}</td></tr>`).join('');
+  return '' +
+    '<table class="table earn-table">' +
+      '<thead><tr><th scope="col">Tin size</th><th scope="col">Points per tin</th></tr></thead>' +
+      `<tbody>${rows}</tbody>` +
+    '</table>';
+}
+
+/**
+ * The calculator's answer, or a prompt when the input could not be used.
+ * @param {{ pointsPerYear: number, tier: object, cashBackPerYear: number, next: { tier: object, pointsShort: number } | null } | null} result from club.calculate
+ * @param {string} sizeLabel the chosen tin size, such as "Drum"
+ * @param {{ escape: Escape, formatPkr: (amount: number) => string }} options
+ * @returns {string} the result's HTML
+ */
+export function calcResultHtml(result, sizeLabel, { escape, formatPkr }) {
+  if (!result) {
+    return '<p class="calc-prompt">Enter how many tins you use in a month, a whole number from 1 to 500.</p>';
+  }
+  const tierName = escape(result.tier.name);
+  const rewards = result.tier.rewards.map((reward) => `<li>${escape(reward)}</li>`).join('');
+  const next = result.next
+    ? `<p>${escape(formatCount(result.next.pointsShort))} more points a year reaches ${escape(result.next.tier.name)}.</p>`
+    : '<p>That is the top tier.</p>';
+  return '' +
+    '<div class="stack stack-sm">' +
+      `<p class="calc-headline">About ${escape(formatCount(result.pointsPerYear))} points a year puts you in <span class="tier-badge" data-tier="${escape(result.tier.id)}">${tierName}</span> from next January.</p>` +
+      `<p>Cash-back at ${tierName}: about ${escape(formatPkr(result.cashBackPerYear))} a year on ${escape(sizeLabel.toLowerCase())} tins.</p>` +
+      `<p class="small muted">${tierName} adds:</p>` +
+      `<ul class="list-check">${rewards}</ul>` +
+      next +
+    '</div>';
+}

@@ -12,3 +12,9 @@ test('painters.html loads its scripts in order and has the anchors', () => {
   assert.match(html, /data-page="painters"/);
   assert.match(html, /data-placeholder="sample painters"/);
 });
+test('painters.html has the club, calculator, referral, join and FAQ sections', () => {
+  for (const id of ['club', 'club-tiers', 'club-earn', 'calculator', 'calc-form', 'calc-tins', 'calc-size', 'calc-result', 'referral', 'join', 'faq']) assert.match(html, new RegExp(`id="${id}"`), id);
+  assert.equal(html.match(/data-whatsapp-form/g).length, 2);
+  assert.match(html, /data-placeholder="reward values"/);
+  assert.match(html, /id="club-years"[^>]*data-rule="years"/);
+});

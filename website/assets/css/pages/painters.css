@@ -71,6 +71,44 @@ main section[id] { scroll-margin-top: var(--header-h); }
 .select[aria-invalid='true'] { border-color: var(--color-brand); }
 .ref-input { text-transform: uppercase; letter-spacing: 0.04em; }
 
+/* Ustad Club. */
+.club-rules { align-items: start; }
+.club-tiers-block { margin-top: clamp(2rem, 1rem + 2vw, 3.5rem); }
+.club-table { min-width: 44rem; }
+.club-table th, .club-table td { vertical-align: top; }
+.club-table .list-check { gap: var(--space-2); font-size: var(--text-sm); }
+.earn-table { max-width: 24rem; }
+
+/* Calculator: form and answer side by side from 641 px. */
+.calc-grid { display: grid; gap: var(--space-6); grid-template-columns: minmax(0, 1fr); align-items: start; }
+.calc-headline { font-size: var(--text-lg); }
+.calc-prompt { color: var(--color-ink-soft); }
+
+.referral-steps { display: grid; gap: var(--space-4); counter-reset: step; }
+.referral-steps li { position: relative; padding-left: 2.25rem; counter-increment: step; overflow-wrap: anywhere; }
+.referral-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* FAQ. */
+.faq-list { display: grid; max-width: 48rem; border-top: 1px solid var(--color-line); }
+.faq-list details { border-bottom: 1px solid var(--color-line); }
+.faq-list summary { padding: var(--space-4) 0; font-weight: 600; cursor: pointer; }
+.faq-list details p { padding-bottom: var(--space-4); color: var(--color-ink-soft); }
+
 @media (min-width: 641px) {
+  .calc-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
   .painter-filters { grid-template-columns: repeat(2, minmax(0, auto)); justify-content: start; column-gap: var(--space-6); }
 }

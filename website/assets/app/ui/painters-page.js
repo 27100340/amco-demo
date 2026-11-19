@@ -1,14 +1,22 @@
-// Painters page: the trusted-painter directory and the booking form.
+// Painters page: the trusted-painter directory, the booking form and the
+// Ustad Club (tables, calculator, referral link, points check).
 // Every WhatsApp link goes to Amco's own number (amco.whatsappLink).
 
 import { amco, painters as data } from '../legacy.js';
 import {
   ALL, orderPainters, filterPainters, readParams, painterLabel,
-  enquiryMessage, noMatchMessage
+  enquiryMessage, noMatchMessage, shareLink
 } from '../painters/directory.js';
-import { cardHtml, emptyHtml } from '../painters/render.js';
+import { calculate, parseTins } from '../painters/club.js';
+import {
+  cardHtml, emptyHtml, tiersTableHtml, earnTableHtml, calcResultHtml
+} from '../painters/render.js';
 
 const escape = amco.escapeHtml;
+const formatPkr = amco.formatPkr;
+const DEFAULT_SIZE = 'gallon';
+const EXAMPLE_CODE = 'USTAD-LHR-014';
+const POINTS_MESSAGE = 'Assalam o alaikum, I would like to check my Ustad Club points. My code: ';
 
 function byId(id) {
   return document.getElementById(id);
@@ -122,10 +130,58 @@ function initBooking(ordered) {
   };
 }
 
+function initClubTables() {
+  byId('club-earn').innerHTML = earnTableHtml(data, { escape });
+  byId('club-tiers').innerHTML = tiersTableHtml(data, { escape, formatPkr });
+}
+
+function initCalculator() {
+  const formEl = byId('calc-form');
+  const tinsEl = byId('calc-tins');
+  const sizeEl = byId('calc-size');
+  const resultEl = byId('calc-result');
+
+  sizeEl.innerHTML = data.sizes.map((size) =>
+    `<option value="${escape(size.id)}"${size.id === DEFAULT_SIZE ? ' selected' : ''}>${escape(size.label)}</option>`).join('');
+
+  function update() {
+    const size = data.sizes.find((candidate) => candidate.id === sizeEl.value);
+    const tins = parseTins(tinsEl.value);
+    const result = tins === null ? null : calculate(tins, sizeEl.value, data);
+    resultEl.innerHTML = calcResultHtml(result, size ? size.label : '', { escape, formatPkr });
+  }
+
+  formEl.addEventListener('input', update);
+  formEl.addEventListener('change', update);
+  formEl.addEventListener('submit', (event) => { event.preventDefault(); });
+  update();
+}
+
+// The site address up to the folder this page is in, so the example link works locally and live.
+function pageFolder() {
+  return window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+}
+
+function initReferral() {
+  const link = shareLink(EXAMPLE_CODE, pageFolder());
+  const exampleEl = byId('ref-example');
+  exampleEl.href = link;
+  exampleEl.textContent = link;
+  document.querySelectorAll('[data-referral-bonus]').forEach((el) => {
+    el.textContent = `${data.referral.bonusPoints} bonus points`;
+  });
+  document.querySelectorAll('[data-points-link]').forEach((el) => {
+    el.href = amco.whatsappLink(POINTS_MESSAGE);
+  });
+}
+
 /** Wire the painters page to the DOM. */
 export function initPaintersPage() {
   const ordered = orderPainters(data.painters, data.tiers);
   initDirectory(ordered, initBooking(ordered));
+  initClubTables();
+  initCalculator();
+  initReferral();
 }
 
 initPaintersPage();

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadClassic } from './load-classic.js';
-import { cardHtml, emptyHtml } from '../../website/assets/app/painters/render.js';
+import { cardHtml, emptyHtml, tiersTableHtml, calcResultHtml, earnTableHtml } from '../../website/assets/app/painters/render.js';
+import { calculate } from '../../website/assets/app/painters/club.js';
 
 const { AmcoPainters: P } = loadClassic('assets/js/painters-data.js');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -23,4 +24,22 @@ test('card text is escaped', () => {
 });
 test('emptyHtml offers the WhatsApp ask', () => {
   assert.match(emptyHtml('msg', opts), /Ask Amco on WhatsApp/);
+});
+test('tiers table shows each tier, cash-back in rupees and inherited rewards', () => {
+  const html = tiersTableHtml(P, { escape: esc, formatPkr: (n) => `Rs ${n}` });
+  for (const t of P.tiers) assert.ok(html.includes(t.name));
+  assert.match(html, /Rs 240/);
+  assert.match(html, /Everything in Silver, plus/);
+});
+test('earn table lists each tin size with its points', () => {
+  const html = earnTableHtml(P, { escape: esc });
+  for (const s of P.sizes) assert.ok(html.includes(s.label));
+  assert.match(html, />16</);
+});
+test('calculator result names tier, next tier, or asks for a number', () => {
+  const fmt = { escape: esc, formatPkr: (n) => `Rs ${n}` };
+  const html = calcResultHtml(calculate(12, 'drum', P), 'Drum', fmt);
+  assert.match(html, /2,?304 points/); assert.match(html, /Gold/); assert.match(html, /Platinum/);
+  assert.match(calcResultHtml(null, 'Drum', fmt), /whole number from 1 to 500/);
+  assert.ok(!/NaN|Infinity|undefined/.test(html));
 });
