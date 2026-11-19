@@ -34,3 +34,7 @@ test('every painter is a well-formed sample listing with no phone number', () =>
 test('specialities carry only id and label (no unused Urdu field)', () => {
   for (const s of P.specialities) assert.deepEqual(Object.keys(s).sort(), ['id', 'label']);
 });
+
+test('no sample listing claims to be verified by Amco', () => {
+  assert.ok(P.painters.every((p) => p.sample === true && p.verified === false));
+});

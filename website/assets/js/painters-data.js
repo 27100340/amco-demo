@@ -68,13 +68,13 @@
   }
 
   var PAINTERS = [
-    painter('USTAD-LHR-014', 'Akram B.', 'Lahore', ['DHA', 'Cantt'], 18, ['interior', 'texture'], 'platinum', 212, true),
-    painter('USTAD-LHR-022', 'Shahid M.', 'Lahore', ['Johar Town', 'Model Town'], 11, ['interior', 'exterior'], 'gold', 96, true),
+    painter('USTAD-LHR-014', 'Akram B.', 'Lahore', ['DHA', 'Cantt'], 18, ['interior', 'texture'], 'platinum', 212, false),
+    painter('USTAD-LHR-022', 'Shahid M.', 'Lahore', ['Johar Town', 'Model Town'], 11, ['interior', 'exterior'], 'gold', 96, false),
     painter('USTAD-LHR-040', 'Imran K.', 'Lahore', ['Gulberg', 'Garden Town'], 4, ['wood-metal'], 'bronze', 12, false),
-    painter('USTAD-KHI-007', 'Naveed A.', 'Karachi', ['Clifton', 'DHA'], 15, ['exterior', 'waterproofing'], 'gold', 141, true),
-    painter('USTAD-KHI-031', 'Faisal R.', 'Karachi', ['Gulshan-e-Iqbal', 'North Nazimabad'], 7, ['interior', 'wood-metal'], 'silver', 38, true),
-    painter('USTAD-ISB-003', 'Tariq H.', 'Islamabad', ['F-7', 'E-11', 'Bahria Town'], 20, ['texture', 'exterior'], 'platinum', 175, true),
-    painter('USTAD-FSD-011', 'Asif J.', 'Faisalabad', ['Peoples Colony', 'Madina Town'], 9, ['interior', 'waterproofing'], 'silver', 44, true),
+    painter('USTAD-KHI-007', 'Naveed A.', 'Karachi', ['Clifton', 'DHA'], 15, ['exterior', 'waterproofing'], 'gold', 141, false),
+    painter('USTAD-KHI-031', 'Faisal R.', 'Karachi', ['Gulshan-e-Iqbal', 'North Nazimabad'], 7, ['interior', 'wood-metal'], 'silver', 38, false),
+    painter('USTAD-ISB-003', 'Tariq H.', 'Islamabad', ['F-7', 'E-11', 'Bahria Town'], 20, ['texture', 'exterior'], 'platinum', 175, false),
+    painter('USTAD-FSD-011', 'Asif J.', 'Faisalabad', ['Peoples Colony', 'Madina Town'], 9, ['interior', 'waterproofing'], 'silver', 44, false),
     painter('USTAD-MUL-005', 'Zahid N.', 'Multan', ['Gulgasht', 'Cantt'], 6, ['exterior', 'interior'], 'bronze', 19, false)
   ];
 
