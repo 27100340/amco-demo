@@ -73,6 +73,11 @@
     });
   }
 
+  /** Return the colour only when it is a plain #rrggbb value, since it lands inside a style attribute. */
+  function safeHex(hex) {
+    return /^#[0-9a-f]{6}$/i.test(String(hex)) ? hex : '#cccccc';
+  }
+
   function formatPkr(amount) {
     return 'Rs ' + Math.round(amount).toLocaleString('en-PK');
   }
@@ -252,7 +257,7 @@
         html += '<div class="project-item" style="--chip:' + shade.hex + '">' +
           '<span class="sw"></span>' +
           '<span><strong>' + escapeHtml(shade.name) + '</strong><br><span class="small muted">' + shade.code + '</span></span>' +
-          '<button class="icon-btn" type="button" data-remove-shade="' + shade.code + '" aria-label="Remove ' + escapeHtml(shade.name) + '">' + icon('close') + '</button>' +
+          '<button class="icon-btn" type="button" data-remove-shade="' + escapeHtml(shade.code) + '" aria-label="Remove ' + escapeHtml(shade.name) + '">' + icon('close') + '</button>' +
         '</div>';
       });
     }
@@ -260,9 +265,9 @@
     if (project.walls && project.walls.length) {
       html += '<h4>From the 3D visualiser</h4>';
       project.walls.forEach(function (wall) {
-        html += '<div class="project-item" style="--chip:' + wall.hex + '">' +
+        html += '<div class="project-item" style="--chip:' + safeHex(wall.hex) + '">' +
           '<span class="sw"></span>' +
-          '<span><strong>' + escapeHtml(wall.label) + '</strong><br><span class="small muted">' + escapeHtml(wall.shadeName) + ', ' + wall.code + '</span></span><span></span>' +
+          '<span><strong>' + escapeHtml(wall.label) + '</strong><br><span class="small muted">' + escapeHtml(wall.shadeName) + ', ' + escapeHtml(wall.code) + '</span></span><span></span>' +
         '</div>';
       });
     }
