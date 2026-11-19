@@ -157,3 +157,12 @@ test('ventilator and plain-opening schedule entries give a window and an opening
   near(byTag.W1.sill, 1.8);
   near(byTag.W1.height, 0.45);
 });
+
+test('a floor plan the project has no floor for is reported, not dropped silently', () => {
+  const [ground] = smallPackage({ section: false, working: false, layout: false });
+  const spare = { ...ground, id: 'ff', name: 'first.dxf', levelIndex: null };
+  const { report } = assemble([ground, spare], { name: 'Test', floors: 1 });
+  assert.ok(report.warnings.some((w) => /left out because the project has 1 floor \(first\.dxf\)/.test(w)));
+  const fits = assemble([ground, { ...spare, levelIndex: 1 }], { name: 'Test', floors: 2 });
+  assert.ok(!fits.report.warnings.some((w) => /left out/.test(w)));
+});

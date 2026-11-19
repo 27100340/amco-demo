@@ -291,6 +291,11 @@ export function assemble(parsed, { name = 'My property', kind = 'house', floors 
 
   const floorCount = Number.isInteger(floors) && floors > 0 ? floors : Math.max(1, ...plans.map((p) => p.levelIndex + 1));
   const indices = [...new Set([...(plans.some((p) => p.levelIndex < 0) ? [-1] : []), ...Array.from({ length: floorCount }, (_, i) => i)])];
+  const leftOut = ofSlot('plan').filter((p) => !Number.isInteger(p.levelIndex) || p.levelIndex >= floorCount);
+  if (leftOut.length) {
+    const names = leftOut.map((p) => p.name ?? p.id).join(', ');
+    warnings.push(`${leftOut.length === 1 ? 'A floor plan was' : `${leftOut.length} floor plans were`} left out because the project has ${floorCount} ${floorCount === 1 ? 'floor' : 'floors'} (${names}). Add a floor to the project, or choose which floor each plan is for.`);
+  }
   const data = sectionData(sections, workings, warnings);
   defaultsUsed.push(...data.sectionDefaults.filter((d) => !defaultsUsed.includes(d)));
   const levels = buildLevels(indices, data, defaultsUsed);
