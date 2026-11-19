@@ -22,7 +22,8 @@
  *           frame of the 3D step (quality chosen by the engine).
  *   switch  tools/dev/engine.html with the studio: as soon as the model is shown, switches to the
  *           dollhouse and then to a room, and reports each switch's longest frame gap (a stall)
- *           and how long until the picture settles.
+ *           and how long until the picture settles (its last redraw; furniture still streaming in
+ *           redraws it, so the time the stream ends after the click is shown too).
  *   frames  tools/dev/engine.html: steady frame time (one render plus a 1-pixel read-back, which
  *           waits for the GPU) in the exterior, dollhouse and first room views, median of 30.
  *
@@ -413,7 +414,11 @@ const watchSwitch = (view) => `new Promise((done) => {
       settled = now;
     }
     if (now - start < ${SWITCH_WATCH_MS}) requestAnimationFrame(tick);
-    else done({ view: '${view}', longestGap: gap, settle: settled - start, mode: viewer.getView().mode });
+    else {
+      const streamed = performance.getEntriesByName('amco:stream-fixtures')[0];
+      const streamEnd = streamed ? streamed.startTime + streamed.duration - start : null;
+      done({ view: '${view}', longestGap: gap, settle: settled - start, streamEnd: streamEnd !== null && streamEnd > 0 ? streamEnd : null, mode: viewer.getView().mode });
+    }
   };
   viewer.setView('${view}');
   requestAnimationFrame(tick);
@@ -437,6 +442,7 @@ async function switchRun(chrome, base, property, tier) {
     clickAfterFirstFrame: shownAt === null ? null : exposedAt - shownAt,
     dollhouseGap: doll.longestGap,
     dollhouseSettle: doll.settle,
+    dollhouseStreamEnd: doll.streamEnd,
     room,
     roomGap: inRoom ? inRoom.longestGap : null,
     roomSettle: inRoom ? inRoom.settle : null
@@ -445,7 +451,7 @@ async function switchRun(chrome, base, property, tier) {
 
 const SWITCH_COLUMNS = [
   ['tier', 'tier'], ['clickAfterFirstFrame', 'first click after first frame'], ['dollhouseGap', 'dollhouse: longest frame gap'],
-  ['dollhouseSettle', 'dollhouse: settled'], ['room', 'room'], ['roomGap', 'room: longest frame gap'], ['roomSettle', 'room: settled']
+  ['dollhouseSettle', 'dollhouse: settled'], ['dollhouseStreamEnd', 'dollhouse: furniture stream ends'], ['room', 'room'], ['roomGap', 'room: longest frame gap'], ['roomSettle', 'room: settled']
 ];
 
 /** Page expression: median GPU-synchronised frame time of the current view. */
