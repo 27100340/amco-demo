@@ -116,12 +116,6 @@ for (const subset of subsets) {
   );
 }
 
-for (const subset of subsets) {
-  copy(
-    join(modules, '@fontsource-variable', 'noto-nastaliq-urdu', 'files', `noto-nastaliq-urdu-${subset}-wght-normal.woff2`),
-    join(fonts, `noto-nastaliq-urdu-${subset}.woff2`)
-  );
-}
 subsetUrdu();
 for (const [scope, family] of [['@fontsource', 'instrument-serif'], ['@fontsource-variable', 'instrument-sans'], ['@fontsource-variable', 'noto-nastaliq-urdu']]) {
   copy(join(modules, scope, family, 'LICENSE'), join(fonts, `OFL-${family}.txt`));

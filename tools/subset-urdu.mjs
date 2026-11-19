@@ -21,8 +21,8 @@ const target = join(site, 'assets', 'fonts', 'noto-nastaliq-urdu-arabic.woff2');
 const SKIP_DIRS = new Set(['vendor', 'fonts', 'img', 'samples', 'node_modules', '.vercel']);
 const TEXT_FILE = /\.(?:html|js|mjs|css|json)$/;
 const ARABIC = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\u200C\u200D]/g;
-/** The space is kept so Urdu phrases never pull in the Latin face. The Urdu alphabet, digits and punctuation are always kept so small copy edits do not need a re-subset. */
-const BASELINE = '  ' + 'ابپتٹثجچحخدڈذرڑزژسشصضطظعغفقکگلمنںوہھءیےآأؤئۃۓ' + '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹' + '،۔؟؛٪ًٌٍَُِّْٰ';
+/** The space and no-break space are always kept, so Urdu phrases never need another face. */
+const BASELINE = '  ';
 
 /**
  * List the text files under a folder, skipping vendored and binary folders.
