@@ -3,6 +3,7 @@
  * "true colour" chip showing the selected shade flat, as printed on the shade card.
  */
 import { shades } from '../legacy.js';
+import { nextSwatchIndex, tabStopIndex } from './swatch-nav.js';
 
 /**
  * Escapes text for HTML.
@@ -62,8 +63,40 @@ export function createShadePanel(root, { onPick, selected = null }) {
     const q = query.trim().toLowerCase();
     const list = library.filter((s) => (family === 'all' || s.family === family)
       && (!q || s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)));
-    grid.innerHTML = list.map((s) => `<button class="swatch-btn shade-swatch" type="button" style="--chip:${esc(s.hex)}" data-code="${esc(s.code)}" title="${esc(s.name)} (${esc(s.code)})" aria-label="${esc(s.name)}, ${esc(s.code)}" aria-pressed="${s.code === current}"></button>`).join('');
+    grid.innerHTML = list.map((s) => `<button class="swatch-btn shade-swatch" type="button" style="--chip:${esc(s.hex)}" data-code="${esc(s.code)}" title="${esc(s.name)} (${esc(s.code)})" aria-label="${esc(s.name)}, ${esc(s.code)}" aria-pressed="${s.code === current}" tabindex="-1"></button>`).join('');
     empty.hidden = list.length > 0;
+    setTabStop(tabStopIndex(list.map((s) => s.code), current));
+  }
+
+  /** @returns {HTMLButtonElement[]} the swatches in display order */
+  function swatches() {
+    return [...grid.querySelectorAll('button[data-code]')];
+  }
+
+  /**
+   * Gives one swatch the tab stop, so the grid is a single stop for the Tab key.
+   * @param {number} index swatch index, or -1 for none
+   */
+  function setTabStop(index) {
+    swatches().forEach((b, i) => { b.tabIndex = i === index ? 0 : -1; });
+  }
+
+  /** @returns {number} swatches per row, read from the laid-out grid */
+  function columnCount() {
+    const list = swatches();
+    if (!list.length) return 1;
+    return list.filter((b) => b.offsetTop === list[0].offsetTop).length;
+  }
+
+  function onGridKey(event) {
+    const list = swatches();
+    const from = list.indexOf(event.target);
+    if (from < 0) return;
+    const to = nextSwatchIndex(event.key, from, list.length, columnCount());
+    if (to === null) return;
+    event.preventDefault();
+    setTabStop(to);
+    list[to].focus();
   }
 
   /** Updates the true-colour chip. */
@@ -91,12 +124,14 @@ export function createShadePanel(root, { onPick, selected = null }) {
     if (!button) return;
     current = button.dataset.code;
     grid.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+    setTabStop(swatches().indexOf(button));
     renderTrue();
     onPick(current);
   }
   familyBar.addEventListener('click', onFamily);
   search.addEventListener('input', onSearch);
   grid.addEventListener('click', onGrid);
+  grid.addEventListener('keydown', onGridKey);
   renderGrid();
   renderTrue();
 
@@ -104,12 +139,14 @@ export function createShadePanel(root, { onPick, selected = null }) {
     setSelected(code) {
       current = code || null;
       grid.querySelectorAll('button[data-code]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.code === current)));
+      setTabStop(tabStopIndex(swatches().map((b) => b.dataset.code), current));
       renderTrue();
     },
     destroy() {
       familyBar.removeEventListener('click', onFamily);
       search.removeEventListener('input', onSearch);
       grid.removeEventListener('click', onGrid);
+      grid.removeEventListener('keydown', onGridKey);
       root.innerHTML = '';
     }
   };
